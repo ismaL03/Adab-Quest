@@ -1,23 +1,44 @@
 {
-  "name": "copy-of-adab-quest",
+  "name": "iqra-arabic-reading",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Iqra — application premium et gratuite pour apprendre à lire l'arabe, du alphabet jusqu'au Mushaf.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "npm run audio:manifest && vite",
+    "build": "npm run audio:manifest && tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "audio:manifest": "node scripts/audio-manifest.mjs",
+    "audio:list": "node scripts/audio-manifest.mjs --list",
+    "quran:build": "node scripts/build-quran-data.mjs"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "@google/genai": "^1.30.0",
-    "react-markdown": "^10.1.0"
+    "@fontsource-variable/fraunces": "5.3.0",
+    "@fontsource-variable/manrope": "5.3.0",
+    "canvas-confetti": "1.9.4",
+    "lucide-react": "0.577.0",
+    "motion": "12.43.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router": "7.18.4",
+    "zustand": "5.0.15"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@tailwindcss/vite": "4.3.3",
+    "@types/canvas-confetti": "1.9.0",
+    "@types/node": "22.20.5",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@vitejs/plugin-react": "5.2.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "7.3.7",
+    "vitest": "5.0.3"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
