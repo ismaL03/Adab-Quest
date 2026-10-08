@@ -1,18 +1,14 @@
 import { useSettings } from '@/store/settings';
+import { getAudioContext } from './context';
 
 /**
  * Effets sonores de l’interface, synthétisés en temps réel avec Web Audio :
  * aucun fichier requis, latence nulle, timbre doux (sinusoïdes + enveloppes).
  */
-let ctx: AudioContext | null = null;
-
 function context(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) return null;
-  ctx ??= new Ctor();
-  if (ctx.state === 'suspended') void ctx.resume();
-  return ctx;
+  const ac = getAudioContext();
+  if (ac && ac.state === 'suspended') void ac.resume().catch(() => {});
+  return ac;
 }
 
 interface ToneOptions {

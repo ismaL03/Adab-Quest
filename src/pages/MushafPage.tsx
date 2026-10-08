@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, Highlighter, Minus, Palette, Plus, Search, Volume2, X } from 'lucide-react';
+import { useAudioState, type AudioSource } from '@/audio/engine';
 import { sounds } from '@/audio/sounds';
 import { LETTER_FONT, playSound } from '@/components/SoundTile';
 import { Button } from '@/components/ui/Button';
@@ -19,6 +20,15 @@ import { cn } from '@/lib/cn';
 import { useSettings } from '@/store/settings';
 
 const PAGE_SIZE = 12;
+
+/** Origine du son entendu, affichée sous le mot. */
+const SOURCE_LABEL: Record<AudioSource, string> = {
+  remote: 'Récitation mot à mot (Quran.com)',
+  file: 'Enregistrement',
+  pack: 'Voix de synthèse intégrée (démonstration)',
+  speech: 'Voix de l’appareil',
+  silent: 'Son indisponible',
+};
 
 export const MARK_OPTIONS: { key: string; label: string; ar: string; marks: string[] }[] = [
   { key: 'fatha', label: 'Fatha', ar: 'ـَ', marks: [MARKS.fatha] },
@@ -64,6 +74,7 @@ export default function MushafPage() {
   const [highlightOpen, setHighlightOpen] = useState(!!highlight);
   const [fontScale, setFontScale] = useState(1);
   const [lastWord, setLastWord] = useState<QuranWord | null>(null);
+  const lastSource = useAudioState((s) => s.lastSource);
 
   const update = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
@@ -209,7 +220,7 @@ export default function MushafPage() {
               <p className="text-xs font-semibold text-muted">
                 {getSurahMeta(lastWord.surah).name} · verset {lastWord.ayah} · mot {lastWord.position}
               </p>
-              <p className="text-[0.7rem] text-muted">Audio : quran/wbw/{lastWord.key.split(':').map((n) => n.padStart(3, '0')).join('_')}.mp3</p>
+              <p className="text-[0.7rem] text-muted">{SOURCE_LABEL[lastSource ?? 'pack']}</p>
             </div>
             <Arabic className="text-3xl leading-[1.7]">{lastWord.text}</Arabic>
             <button type="button" onClick={() => setLastWord(null)} className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface-sunken" aria-label="Fermer">

@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "audio:manifest": "node scripts/audio-manifest.mjs",
     "audio:list": "node scripts/audio-manifest.mjs --list",
+    "audio:tts": "node scripts/tts/export-inputs.mjs && .venv-tts/bin/python scripts/tts/generate.py --model vits-piper-ar_JO-kareem-medium",
     "quran:build": "node scripts/build-quran-data.mjs"
   },
   "dependencies": {

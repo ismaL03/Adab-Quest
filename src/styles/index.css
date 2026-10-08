@@ -188,6 +188,20 @@
   }
 }
 
+/*
+ * Couleur, fond et police de la page, volontairement hors des « layers » Tailwind :
+ * une feuille de réinitialisation externe (page hôte, aperçu intégré) ne peut
+ * plus imposer sa propre couleur de texte — sinon texte sombre sur fond sombre.
+ */
+html body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
    Composants utilitaires
    ────────────────────────────────────────────────────────────────────────── */

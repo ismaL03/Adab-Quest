@@ -13,7 +13,7 @@ export function Logo({ className, compact }: { className?: string; compact?: boo
             transform="translate(0 3)"
           />
         </svg>
-        <span dir="rtl" className="font-quran relative mt-1 text-[1.15rem] leading-none text-white">
+        <span dir="rtl" className="font-quran relative mt-1 text-[1.15rem] leading-none text-on-primary">
           ٱقْرَأْ
         </span>
       </div>

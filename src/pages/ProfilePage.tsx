@@ -17,10 +17,10 @@ export default function ProfilePage() {
   const lvl = levelFromXp(progress.xp);
   const completed = LESSONS.filter((l) => progress.lessons[l.id]).length;
   const [confirmReset, setConfirmReset] = useState(false);
-  const [audioFiles, setAudioFiles] = useState<number | null>(null);
+  const [audioStats, setAudioStats] = useState<{ files: number; bundled: number } | null>(null);
 
   useEffect(() => {
-    audio.loadManifest().then((m) => setAudioFiles(m.size));
+    audio.stats().then(setAudioStats);
   }, []);
 
   return (
@@ -29,7 +29,7 @@ export default function ProfilePage() {
       <GlassCard strong className="relative overflow-hidden p-6">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(40rem_16rem_at_100%_0%,var(--primary-soft),transparent)]" />
         <div className="relative flex flex-wrap items-center gap-5">
-          <div className="grid size-20 place-items-center rounded-[1.6rem] bg-gradient-to-br from-primary to-primary-strong text-3xl font-bold text-white shadow-[0_16px_40px_-16px_var(--primary)]">
+          <div className="grid size-20 place-items-center rounded-[1.6rem] bg-gradient-to-br from-primary to-primary-strong text-3xl font-bold text-on-primary shadow-[0_16px_40px_-16px_var(--primary)]">
             {(settings.displayName || 'م').slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
@@ -86,7 +86,7 @@ export default function ProfilePage() {
                     ? b.tone === 'gold'
                       ? 'bg-gradient-to-b from-gold-bright to-gold text-[#1d1608] shadow-[0_12px_28px_-12px_var(--gold)]'
                       : b.tone === 'emerald'
-                        ? 'bg-gradient-to-b from-primary to-primary-strong text-white shadow-[0_12px_28px_-12px_var(--primary)]'
+                        ? 'bg-gradient-to-b from-primary to-primary-strong text-on-primary shadow-[0_12px_28px_-12px_var(--primary)]'
                         : 'bg-ink text-bg'
                     : 'bg-surface-sunken text-muted ring-1 ring-line',
                 )}
@@ -149,21 +149,22 @@ export default function ProfilePage() {
         </GlassCard>
         <GlassCard className="divide-y divide-line px-5 py-2 md:col-span-2">
           <Toggle
-            label="Audio mot-à-mot du Coran en ligne"
-            description="Si le fichier local manque, utilise la récitation mot-à-mot de Quran.com."
+            label="Récitation du Coran en ligne"
+            description="Pour les mots du Coran, utilise en priorité la récitation mot-à-mot de Quran.com (connexion requise)."
             checked={settings.remoteQuranAudio}
             onChange={(v) => settings.update({ remoteQuranAudio: v })}
           />
           <Toggle
-            label="Synthèse vocale de secours"
-            description="Si aucun enregistrement n’est disponible, la voix arabe du navigateur lit l’élément."
+            label="Voix de l’appareil en dernier recours"
+            description="Pour les rares éléments sans son intégré, la voix arabe du navigateur lit l’élément."
             checked={settings.ttsFallback}
             onChange={(v) => settings.update({ ttsFallback: v })}
           />
           <p className="py-3 text-sm text-muted">
-            Fichiers audio installés : <span className="font-semibold text-ink tabular-nums">{audioFiles ?? '…'}</span> — ajoutez vos enregistrements dans{' '}
-            <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">public/audio/</code> puis lancez{' '}
-            <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">npm run audio:manifest</code>.
+            Sons intégrés : <span className="font-semibold text-ink tabular-nums">{audioStats?.bundled ?? '…'}</span> (voix de synthèse
+            arabe, lisible sur tous les appareils) · enregistrements ajoutés :{' '}
+            <span className="font-semibold text-ink tabular-nums">{audioStats?.files ?? '…'}</span>. Vos propres enregistrements, déposés dans{' '}
+            <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">public/audio/</code>, remplacent automatiquement les sons intégrés.
           </p>
         </GlassCard>
       </div>

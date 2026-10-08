@@ -31,6 +31,7 @@ npm run dev        # http://localhost:5173
 | `npm run typecheck` | Vérification TypeScript seule |
 | `npm run audio:manifest` | Recense les fichiers présents dans `public/audio/` |
 | `npm run audio:list` | Idem + écrit `docs/audio-attendus.txt` (liste des sons à enregistrer) |
+| `npm run audio:tts` | Régénère les sons intégrés par synthèse vocale (voir « Audio ») |
 | `npm run quran:build` | Régénère les données coraniques (voir plus bas) |
 
 ## Stack technique
@@ -104,19 +105,24 @@ Une question ratée revient automatiquement en fin de leçon.
 
 **Adapter le contenu** : tout le parcours est décrit en données dans `src/data/curriculum/` (modules, mots, textes). Ajouter une leçon revient à appeler un des modèles (`letterGroupLesson`, `wordsLesson`, `surahLesson`…) ou à écrire ses étapes avec les fabriques de `builders.ts`. Les tests (`npm test`) vérifient la cohérence de chaque leçon (bonne réponse présente, options uniques, syllabes qui recomposent le mot…).
 
-## Audio : brancher les vrais enregistrements
+## Audio : du son sur tous les appareils
 
-L’application fonctionne **dès maintenant** grâce à une chaîne de repli, et chaque élément cliquable pointe déjà vers son fichier audio :
+L’application **embarque ses propres sons** : 2 831 extraits (les 29 noms de lettres, toutes les syllabes, le vocabulaire et chaque mot d’Al-Fâtiha et de Juz ‘Amma), regroupés en 67 paquets MP3 dans `public/audio/packs/` (≈ 16 Mo). Ils sont lus avec la **Web Audio API**, ce qui fonctionne sur ordinateur, Android et iPhone/iPad, sans dépendre d’une voix installée sur l’appareil. Le son est déverrouillé au premier toucher (exigence des navigateurs mobiles).
 
-1. **Fichier local** `public/audio/<chemin>` s’il est présent ;
-2. pour les mots du Coran, **audio mot-à-mot de Quran.com** (`https://audio.qurancdn.com/wbw/…`) ;
-3. sinon, **synthèse vocale arabe du navigateur** (désactivable dans le profil).
+Ces sons sont produits **hors ligne par synthèse vocale neuronale** (voix arabe Piper « kareem », moteur sherpa-onnx). L’écriture uthmanie est d’abord convertie en arabe vocalisé prononçable (`src/audio/speechText.ts` : alif de liaison, lâm solaire, alif suscrit, nom « Allâh »…). C’est une **voix de démonstration** : elle ne respecte pas toutes les règles du Tajweed et a vocation à être remplacée par de vrais enregistrements.
 
-Le retour visuel (onde, pulsation, halo) est synchronisé avec la lecture dans tous les cas.
+Ordre de priorité pour chaque élément cliquable :
 
-### Ajouter les fichiers
+1. **Votre enregistrement** `public/audio/<chemin>` s’il existe ;
+2. pour les mots du Coran, la **récitation mot-à-mot de Quran.com** (en ligne, désactivable dans le profil) ;
+3. le **son intégré** (paquets ci-dessus) ;
+4. en dernier recours, la voix arabe de l’appareil.
 
-1. Lancez `npm run audio:list` : la liste complète des sons attendus (avec le texte arabe à enregistrer) est écrite dans `docs/audio-attendus.txt`.
+Le retour visuel (onde, pulsation, halo) est synchronisé avec la lecture dans tous les cas, et la Vue Mushaf indique sous le mot touché quelle source a été entendue.
+
+### Remplacer par de vrais enregistrements
+
+1. `npm run audio:list` écrit dans `docs/audio-attendus.txt` la liste des sons utilisés, avec le texte arabe à enregistrer.
 2. Déposez les fichiers dans `public/audio/` en respectant les chemins :
 
 | Dossier | Contenu | Exemple |
@@ -126,15 +132,25 @@ Le retour visuel (onde, pulsation, halo) est synchronisé avec la lecture dans t
 | `words/` | Mots de vocabulaire | `words/kataba.mp3` → كَتَبَ |
 | `quran/wbw/` | Mots du Coran (même nommage que Quran.com) | `quran/wbw/001_002_003.mp3` → sourate 1, verset 2, mot 3 |
 
-3. Lancez `npm run audio:manifest` (fait automatiquement par `npm run dev` et `npm run build`).
+3. Lancez `npm run audio:manifest` (fait automatiquement par `npm run dev` et `npm run build`). Chaque fichier déposé remplace le son intégré correspondant.
 
-Les formats `.mp3`, `.ogg`, `.opus`, `.m4a`, `.aac`, `.wav` et `.webm` sont reconnus : un `ba.ogg` remplace automatiquement le `ba.mp3` attendu.
+Les formats `.mp3`, `.ogg`, `.opus`, `.m4a`, `.aac`, `.wav` et `.webm` sont reconnus.
+
+### Régénérer les sons intégrés
+
+Après une modification du parcours (nouveaux mots, nouvelles sourates dans `BUNDLED_SURAHS`) :
+
+```bash
+python3 -m venv .venv-tts && .venv-tts/bin/pip install -r scripts/tts/requirements.txt
+curl -L https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ar_JO-kareem-medium.tar.bz2 | tar xj
+npm run audio:tts
+```
 
 ### Variables d’environnement (facultatives)
 
 Voir `.env.example` :
 
-- `VITE_AUDIO_BASE_URL` — servir les fichiers audio depuis un CDN (défaut : `/audio/`) ;
+- `VITE_AUDIO_BASE_URL` — servir les fichiers audio depuis un CDN (défaut : `audio/` à côté de l’application) ;
 - `VITE_QURAN_WBW_URL` — source distante de l’audio mot-à-mot du Coran (vide = désactivée).
 
 ## Vue Mushaf (composant réutilisable)
@@ -181,5 +197,6 @@ Le build est un site statique (`dist/`) :
   npm pack react-native-quran-tajweed@0.1.3 && tar xzf react-native-quran-tajweed-0.1.3.tgz
   npm run quran:build -- package/src/data
   ```
-- **Audio mot-à-mot** (repli en ligne) : Quran.com.
+- **Audio mot-à-mot** (en ligne) : Quran.com.
+- **Sons intégrés** : synthèse vocale hors ligne avec [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache 2.0) et la voix Piper « ar_JO-kareem-medium ». La carte du modèle renvoie à son jeu de données d’entraînement sans préciser de licence : à vérifier avant une diffusion à grande échelle, ou à remplacer par vos enregistrements.
 - **Interface** : Manrope et Fraunces (SIL OFL), icônes Lucide (ISC).

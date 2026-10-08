@@ -255,7 +255,7 @@ function PathNode({
           state === 'done' &&
             'bg-gradient-to-b from-gold-bright to-gold text-[#1d1608] shadow-[0_6px_0_color-mix(in_oklab,var(--gold)_70%,black),0_18px_30px_-12px_var(--gold)]',
           (state === 'current' || state === 'open') &&
-            'bg-gradient-to-b from-primary to-primary-strong text-white shadow-[0_6px_0_color-mix(in_oklab,var(--primary-strong)_75%,black),0_18px_30px_-12px_var(--primary)]',
+            'bg-gradient-to-b from-primary to-primary-strong text-on-primary shadow-[0_6px_0_color-mix(in_oklab,var(--primary-strong)_75%,black),0_18px_30px_-12px_var(--primary)]',
           state === 'locked' && 'bg-surface-sunken text-muted shadow-[0_6px_0_var(--line-strong)] ring-1 ring-line',
         )}
       >

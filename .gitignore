@@ -24,3 +24,6 @@ npm-debug.log*
 .idea
 .DS_Store
 *.sw?
+scripts/tts/inputs.json
+.venv-tts
+vits-piper-*

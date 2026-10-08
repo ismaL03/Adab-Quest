@@ -77,7 +77,7 @@ export function LessonComplete({
         <div className="absolute inset-0 rounded-full bg-gradient-to-b from-gold-bright to-gold shadow-[0_24px_60px_-20px_var(--gold)]" />
         <div className="absolute inset-[7px] rounded-full bg-gradient-to-b from-primary to-primary-strong" />
         <div className="absolute inset-[7px] rounded-full bg-[radial-gradient(circle_at_30%_20%,rgb(255_255_255/0.35),transparent_55%)]" />
-        <Arabic className="relative text-[3.2rem] text-white drop-shadow">{lesson.glyph}</Arabic>
+        <Arabic className="relative text-[3.2rem] text-on-primary drop-shadow">{lesson.glyph}</Arabic>
         <ParticleBurst count={22} radius={130} />
       </motion.div>
 

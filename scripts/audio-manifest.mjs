@@ -20,7 +20,8 @@ function walk(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) return walk(full);
+    // Les paquets de sons intégrés ont leur propre index (packs/index.json).
+    if (entry.isDirectory()) return entry.name === 'packs' && dir === audioDir ? [] : walk(full);
     return EXT.has(path.extname(entry.name).toLowerCase()) ? [path.relative(audioDir, full).split(path.sep).join('/')] : [];
   });
 }
