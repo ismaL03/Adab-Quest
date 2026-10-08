@@ -2,6 +2,7 @@
 node_modules
 dist
 dist-ssr
+dist-portable
 *.tsbuildinfo
 coverage
 
@@ -14,6 +15,7 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
+!.env.portable
 *.local
 
 # Éditeurs / OS

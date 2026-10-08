@@ -203,7 +203,7 @@ function LessonRun({ lesson, onExit, onRetry }: { lesson: Lesson; onExit: () => 
   return (
     <div className="flex min-h-dvh flex-col">
       {/* En-tête */}
-      <header className="sticky top-0 z-30 bg-bg/70 backdrop-blur-xl">
+      <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 bg-bg/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-4xl items-center gap-4 px-4 py-3 sm:px-6">
           <button
             type="button"
@@ -278,7 +278,7 @@ function LessonRun({ lesson, onExit, onRetry }: { lesson: Lesson; onExit: () => 
           )}
         </AnimatePresence>
         <div className={cn('relative', !feedback && 'border-t border-line bg-bg/80 backdrop-blur-xl')}>
-          <div className="mx-auto flex max-w-4xl justify-end px-5 py-4 sm:px-8">
+          <div className="mx-auto flex max-w-4xl justify-end px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:px-8">
             <Button
               size="lg"
               variant={primary.tone}

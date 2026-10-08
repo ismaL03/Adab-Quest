@@ -19,7 +19,9 @@
         try {
           var raw = localStorage.getItem('iqra-settings');
           var theme = raw ? JSON.parse(raw).state.theme : 'system';
-          var dark = theme === 'dark' || (theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          var host = document.documentElement.getAttribute('data-theme');
+          var systemDark = host === 'dark' || (host !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          var dark = theme === 'dark' || (theme !== 'light' && systemDark);
           document.documentElement.classList.toggle('dark', dark);
         } catch (e) {}
       })();

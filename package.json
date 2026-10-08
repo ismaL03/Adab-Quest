@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "npm run audio:manifest && vite",
     "build": "npm run audio:manifest && tsc -b && vite build",
+    "build:portable": "npm run audio:manifest && tsc -b && vite build --mode portable --outDir dist-portable",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",

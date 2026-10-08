@@ -97,7 +97,7 @@ export function AppShell() {
       </aside>
 
       {/* Barre supérieure (mobile) */}
-      <header className="sticky top-0 z-40 border-b border-line bg-bg/75 backdrop-blur-xl lg:hidden">
+      <header className="sticky top-[env(safe-area-inset-top,0px)] z-40 border-b border-line bg-bg/75 backdrop-blur-xl lg:hidden">
         <div className="flex items-center justify-between px-4 py-2.5">
           <Logo compact />
           <StatChips compact />

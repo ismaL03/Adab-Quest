@@ -25,6 +25,7 @@ npm run dev        # http://localhost:5173
 | --- | --- |
 | `npm run dev` | Serveur de développement (régénère d’abord le manifeste audio) |
 | `npm run build` | Vérification TypeScript + build de production dans `dist/` |
+| `npm run build:portable` | Build à chemins relatifs et routage par hash dans `dist-portable/` (GitHub Pages, sous-dossier, hébergement sans réécriture) |
 | `npm run preview` | Sert le build de production localement |
 | `npm test` | Tests unitaires (parcours, données coraniques, Tajweed, progression) |
 | `npm run typecheck` | Vérification TypeScript seule |

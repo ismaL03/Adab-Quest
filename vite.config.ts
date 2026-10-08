@@ -3,7 +3,10 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 
-export default defineConfig({
+// Mode « portable » (`npm run build:portable`) : chemins relatifs, utilisable
+// dans n’importe quel sous-dossier (GitHub Pages, intranet, clé USB…).
+export default defineConfig(({ mode }) => ({
+  base: mode === 'portable' ? './' : '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
@@ -16,4 +19,4 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
   },
-});
+}));

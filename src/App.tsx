@@ -1,5 +1,13 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Outlet, RouterProvider, ScrollRestoration } from 'react-router';
+import {
+  createBrowserRouter,
+  createHashRouter,
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
+  ScrollRestoration,
+  type RouteObject,
+} from 'react-router';
 import { AppShell } from '@/components/AppShell';
 import { Toaster } from '@/components/Toaster';
 import { useThemeSync } from '@/components/useTheme';
@@ -36,8 +44,7 @@ function RootLayout() {
   );
 }
 
-const router = createBrowserRouter(
-  [
+const routes: RouteObject[] = [
     {
       element: <RootLayout />,
       children: [
@@ -54,9 +61,24 @@ const router = createBrowserRouter(
         { path: '*', element: <NotFoundPage /> },
       ],
     },
-  ],
-  { basename: import.meta.env.BASE_URL },
-);
+];
+
+/**
+ * Routage : « browser » (défaut, URLs propres), « hash » (hébergement statique
+ * sans réécriture) ou « memory » (page intégrée dans un cadre).
+ */
+function createRouter() {
+  switch (import.meta.env.VITE_ROUTER) {
+    case 'hash':
+      return createHashRouter(routes);
+    case 'memory':
+      return createMemoryRouter(routes);
+    default:
+      return createBrowserRouter(routes, { basename: import.meta.env.BASE_URL });
+  }
+}
+
+const router = createRouter();
 
 export default function App() {
   return <RouterProvider router={router} />;
