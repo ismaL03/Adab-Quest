@@ -778,7 +778,7 @@ const MODULE_SHADDA: ModuleDraft = {
       glyph: 'إِنَّ',
       words: WORDS_GHUNNA,
       intro: 'Un nûn ou un mîm avec chadda se prononce avec une nasalisation (ghunna) de deux temps, le son passant par le nez : إِنَّ, ثُمَّ.',
-      highlight: { prompt: 'Retrouve la ghunna (en vert) dans le Coran.', spec: { rules: ['ghunnah'], label: 'la ghunna' }, goal: 3 },
+      highlight: { prompt: 'Retrouve la ghunna (nûn ou mîm avec chadda) dans le Coran.', spec: { rules: ['ghunnah'], label: 'la ghunna' }, goal: 3 },
     }),
   ],
 };
@@ -810,7 +810,7 @@ const MODULE_ARTICLE: ModuleDraft = {
       glyph: 'ٱلشَّ',
       words: WORDS_SHAMSI,
       intro: 'Devant les 14 lettres solaires (ت ث د ذ ر ز س ش ص ض ط ظ ل ن), le lâm s’écrit mais ne se prononce pas : la lettre suivante prend une chadda. ٱلشَّمْسُ « ash-shamsou ».',
-      highlight: { prompt: 'Retrouve le lâm solaire (en gris) dans le Coran.', spec: { rules: ['laam_shamsiyah'], label: 'le lâm solaire' }, goal: 3 },
+      highlight: { prompt: 'Retrouve le lâm solaire (non prononcé) dans le Coran.', spec: { rules: ['laam_shamsiyah'], label: 'le lâm solaire' }, goal: 3 },
     }),
     wordsLesson({
       id: 'hamzat-wasl',
@@ -819,7 +819,7 @@ const MODULE_ARTICLE: ModuleDraft = {
       glyph: 'ٱ',
       words: WORDS_WASL,
       intro: 'L’alif surmonté d’un petit ṣâd (ٱ) se prononce seulement en début de lecture. En liaison, il disparaît : بِسْمِ ٱللَّهِ se lit « bismi-llâhi ».',
-      highlight: { prompt: 'Retrouve les alifs de liaison muets (en gris).', spec: { rules: ['ham_wasl'], label: 'la hamzat al-wasl' }, goal: 3 },
+      highlight: { prompt: 'Retrouve les alifs de liaison muets (ٱ en milieu de phrase).', spec: { rules: ['ham_wasl'], label: 'la hamzat al-wasl' }, goal: 3 },
     }),
   ],
 };
@@ -897,17 +897,21 @@ const tajweedColors = lesson({
       body: 'Dans un Mushaf Tajweed, chaque couleur signale une règle : les tons rouges et orangés indiquent les allongements (madd), le vert la nasalisation (ghunna), le bleu la qalqala, le gris les lettres non prononcées.',
       tips: ['Active ou désactive les couleurs à tout moment depuis la Vue Mushaf.'],
     },
-    mushaf('Repère les allongements (madd) dans Al-Fâtiha.', { rules: ['madda_normal', 'madda_permissible', 'madda_obligatory', 'madda_necessary'], label: 'le madd' }, 4, {
+    mushaf('Repère les allongements (tons rouges et orangés) dans Al-Fâtiha.', { rules: ['madda_normal', 'madda_permissible', 'madda_obligatory', 'madda_necessary'], label: 'le madd' }, 4, {
       passage: { surah: 1, from: 1, to: 7 },
+      tajweed: true,
     }),
-    mushaf('Repère la nasalisation (ghunna, ikhfâ’, idghâm) dans An-Nâs.', { rules: ['ghunnah', 'ikhafa', 'idgham_ghunnah', 'iqlab'], label: 'la nasalisation' }, 3, {
+    mushaf('Repère la nasalisation (tons verts et violets) dans An-Nâs.', { rules: ['ghunnah', 'ikhafa', 'idgham_ghunnah', 'iqlab'], label: 'la nasalisation' }, 3, {
       passage: { surah: 114, from: 1, to: 6 },
+      tajweed: true,
     }),
-    mushaf('Repère la qalqala dans Al-Falaq.', { rules: ['qalaqah'], label: 'la qalqala' }, 3, {
+    mushaf('Repère la qalqala (en bleu) dans Al-Falaq.', { rules: ['qalaqah'], label: 'la qalqala' }, 3, {
       passage: { surah: 113, from: 1, to: 5 },
+      tajweed: true,
     }),
-    mushaf('Repère les lettres non prononcées (gris) dans Al-Ikhlâs.', { rules: ['ham_wasl', 'laam_shamsiyah', 'slnt'], label: 'les lettres muettes' }, 3, {
+    mushaf('Repère les lettres non prononcées (en gris) dans Al-Ikhlâs.', { rules: ['ham_wasl', 'laam_shamsiyah', 'slnt'], label: 'les lettres muettes' }, 3, {
       passage: { surah: 112, from: 1, to: 4 },
+      tajweed: true,
     }),
   ],
 });

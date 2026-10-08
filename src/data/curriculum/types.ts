@@ -109,6 +109,8 @@ export interface MushafStep extends BaseStep {
   filters?: { label: string; highlight: HighlightSpec }[];
   passage?: Passage;
   goal: number;
+  /** Affiche les couleurs du Tajweed (leçon sur le code couleur). */
+  tajweed?: boolean;
 }
 
 /** Lecture d’un verset mot à mot. */

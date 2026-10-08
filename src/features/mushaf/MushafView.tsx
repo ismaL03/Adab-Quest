@@ -27,6 +27,10 @@ export interface MushafViewProps {
   foundKeys?: ReadonlySet<string>;
   /** Atténue les mots ne contenant pas l’élément étudié. */
   dimOthers?: boolean;
+  /** Exercice de recherche : l’élément n’est révélé (en doré) qu’une fois trouvé. */
+  revealOnFound?: boolean;
+  /** Mot touché à tort (signal rouge bref). */
+  wrongKey?: string | null;
   /** Force l’affichage des couleurs du Tajweed (sinon : réglage utilisateur). */
   tajweed?: boolean;
   fontScale?: number;
@@ -44,6 +48,8 @@ export function MushafView({
   highlight,
   foundKeys,
   dimOthers,
+  revealOnFound,
+  wrongKey,
   tajweed,
   fontScale = 1,
   showBanner = true,
@@ -92,7 +98,17 @@ export function MushafView({
           <p dir="rtl" lang="ar" className="font-quran mt-3 text-center" style={{ fontSize: `calc(${fontScale} * clamp(1.45rem, 3.6vw, 2rem))` }}>
             {fatiha![0].words.map((w) => (
               <span key={w.key}>
-                <MushafWord word={w} tajweed={tajweedOn} showTafkhim={settings.showTafkhim} onPress={handlePress} />{' '}
+                <MushafWord
+                  word={w}
+                  highlight={spec}
+                  tajweed={tajweedOn}
+                  showTafkhim={settings.showTafkhim}
+                  found={foundKeys?.has(w.key)}
+                  dimOthers={dimOthers && !!spec}
+                  revealOnFound={revealOnFound}
+                  wrong={wrongKey === w.key}
+                  onPress={handlePress}
+                />{' '}
               </span>
             ))}
           </p>
@@ -123,6 +139,8 @@ export function MushafView({
                       showTafkhim={settings.showTafkhim}
                       found={foundKeys?.has(w.key)}
                       dimOthers={dimOthers && !!spec}
+                      revealOnFound={revealOnFound}
+                      wrong={wrongKey === w.key}
                       onPress={handlePress}
                     />{' '}
                   </span>

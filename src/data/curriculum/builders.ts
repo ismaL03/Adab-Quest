@@ -125,7 +125,7 @@ export function mushaf(
   prompt: string,
   highlight: HighlightSpec,
   goal = 3,
-  extra: { filters?: MushafStep['filters']; passage?: Passage } = {},
+  extra: { filters?: MushafStep['filters']; passage?: Passage; tajweed?: boolean } = {},
 ): Draft {
   return { kind: 'mushaf', prompt, highlight, goal, ...extra };
 }
@@ -195,7 +195,7 @@ export function letterGroupLesson(opts: { id: string; letterIds: string[]; title
         ),
         match(items, rng, 'Associe chaque lettre à son nom'),
         mushaf(
-          'Retrouve ces lettres dans le Coran : touche les mots qui brillent.',
+          'Retrouve ces lettres dans le Coran : touche les mots qui les contiennent.',
           { letters: letterIds.filter((id) => id !== 'alif').map((id) => letter(id).char), label: 'les lettres de la leçon' },
           3,
           {

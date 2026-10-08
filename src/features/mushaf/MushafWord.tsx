@@ -14,6 +14,13 @@ export interface MushafWordProps {
   found?: boolean;
   /** Atténue les mots qui ne contiennent pas l’élément étudié. */
   dimOthers?: boolean;
+  /**
+   * Exercice de recherche : le texte reste uni, l’élément étudié n’apparaît
+   * en doré qu’une fois le mot trouvé.
+   */
+  revealOnFound?: boolean;
+  /** Mot touché à tort : bref signal rouge. */
+  wrong?: boolean;
   onPress: (word: QuranWord, matches: number, el: HTMLElement) => void;
 }
 
@@ -24,6 +31,8 @@ export const MushafWord = memo(function MushafWord({
   showTafkhim,
   found,
   dimOthers,
+  revealOnFound,
+  wrong,
   onPress,
 }: MushafWordProps) {
   const playing = useIsPlaying(word.key);
@@ -32,6 +41,7 @@ export const MushafWord = memo(function MushafWord({
     [word, highlight, tajweed, showTafkhim],
   );
   const isMatch = matches > 0;
+  const showHighlight = !revealOnFound || !!found;
 
   return (
     <motion.span
@@ -46,21 +56,22 @@ export const MushafWord = memo(function MushafWord({
           onPress(word, matches, e.currentTarget);
         }
       }}
-      animate={playing ? { y: -2, scale: 1.04 } : { y: 0, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 500, damping: 26 }}
+      animate={wrong ? { x: [0, -5, 5, -3, 3, 0] } : playing ? { y: -2, scale: 1.04 } : { y: 0, scale: 1 }}
+      transition={wrong ? { duration: 0.4 } : { type: 'spring', stiffness: 500, damping: 26 }}
       className={cn(
         'relative inline-block cursor-pointer rounded-xl px-[0.08em] transition-[background-color,box-shadow,opacity] duration-300 outline-none',
         'hover:bg-[color-mix(in_oklab,var(--primary)_9%,transparent)] focus-visible:ring-2 focus-visible:ring-primary',
         playing && 'bg-[color-mix(in_oklab,var(--primary)_16%,transparent)] shadow-[0_0_0_1px_var(--primary-soft)]',
-        found && 'bg-[color-mix(in_oklab,var(--highlight)_20%,transparent)] shadow-[inset_0_-3px_0_var(--highlight)]',
+        found && !revealOnFound && 'bg-[color-mix(in_oklab,var(--highlight)_20%,transparent)] shadow-[inset_0_-3px_0_var(--highlight)]',
+        wrong && 'bg-danger-soft text-danger',
         dimOthers && !isMatch && !playing && 'opacity-45',
       )}
     >
       {runs.map((r, i) => (
         <span
           key={i}
-          className={cn(r.highlighted && 'mushaf-highlight')}
-          style={r.color && !r.highlighted ? { color: r.color } : undefined}
+          className={cn(r.highlighted && showHighlight && 'mushaf-highlight')}
+          style={r.color && !(r.highlighted && showHighlight) ? { color: r.color } : undefined}
         >
           {r.text}
         </span>

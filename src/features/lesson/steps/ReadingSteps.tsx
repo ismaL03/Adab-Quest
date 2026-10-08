@@ -102,6 +102,7 @@ export function MushafStepView({ step, api }: StepProps<MushafStep>) {
   const [filter, setFilter] = useState<number>(-1);
   const [found, setFound] = useState<Set<string>>(new Set());
   const [hint, setHint] = useState<string | null>(null);
+  const [wrongKey, setWrongKey] = useState<string | null>(null);
 
   const highlight: HighlightSpec = filter >= 0 && step.filters ? step.filters[filter].highlight : step.highlight;
 
@@ -135,7 +136,11 @@ export function MushafStepView({ step, api }: StepProps<MushafStep>) {
         }
         setHint(null);
       } else {
-        setHint(`Ce mot ne contient pas ${highlight.label ?? 'l’élément recherché'} — cherche les mots qui brillent.`);
+        // Pas de pénalité : un signal bref, puis on continue de chercher.
+        sfx.wrong();
+        setWrongKey(word.key);
+        setTimeout(() => setWrongKey((k) => (k === word.key ? null : k)), 650);
+        setHint(`Ce mot ne contient pas ${highlight.label ?? 'l’élément recherché'}. Observe bien chaque lettre.`);
       }
     },
     [found, highlight.label],
@@ -206,8 +211,10 @@ export function MushafStepView({ step, api }: StepProps<MushafStep>) {
           to={passage.to}
           highlight={highlight}
           foundKeys={found}
-          // Sans couleurs Tajweed : seul l’élément étudié ressort (pas de confusion avec l’or des madd).
-          tajweed={false}
+          wrongKey={wrongKey}
+          // Texte uni : c’est à l’élève de trouver l’élément, révélé en doré une fois touché.
+          revealOnFound
+          tajweed={step.tajweed ?? false}
           showBanner={passage.from === 1}
           className="w-full max-w-3xl"
           onWordPress={onWord}
