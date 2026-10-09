@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Award, BookCheck, Ear, Flame, Lock, Moon, Monitor, RotateCcw, Sparkles, Sun, Zap } from 'lucide-react';
+import { Link } from 'react-router';
+import { Award, BookCheck, ChevronRight, Ear, Mic, Flame, Lock, Moon, Monitor, RotateCcw, Sparkles, Sun, Zap } from 'lucide-react';
 import { audio } from '@/audio/engine';
 import { BadgeGlyph } from '@/components/BadgeGlyph';
 import { Button } from '@/components/ui/Button';
@@ -155,11 +156,17 @@ export default function ProfilePage() {
             onChange={(v) => settings.update({ remoteQuranAudio: v })}
           />
           <p className="py-3 text-sm text-muted">
-            Seules des voix humaines sont utilisées, jamais de voix de synthèse. Enregistrements installés pour les lettres et syllabes :{' '}
+            Seules des voix humaines sont utilisées, jamais de voix de synthèse. Enregistrements installés :{' '}
             <span className="font-semibold text-ink tabular-nums">{recordings ?? '…'}</span>. Tant qu’un élément n’a pas d’enregistrement, il
-            reste silencieux (seule l’animation est jouée). Ajoutez vos fichiers dans{' '}
-            <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">public/audio/</code>.
+            reste silencieux (seule l’animation est jouée).
           </p>
+          <Link to="/studio" className="flex items-center justify-between gap-3 py-3.5 font-semibold text-ink hover:text-primary">
+            <span className="flex items-center gap-2.5">
+              <Mic className="size-4 text-primary" /> Studio d’enregistrement
+              <span className="text-sm font-normal text-muted">— donner une voix aux sons muets</span>
+            </span>
+            <ChevronRight className="size-4" />
+          </Link>
         </GlassCard>
       </div>
 

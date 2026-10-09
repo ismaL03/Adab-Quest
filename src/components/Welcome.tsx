@@ -7,7 +7,7 @@ import { Arabic } from './ui/primitives';
 
 const FEATURES = [
   { icon: Headphones, title: 'Écoute et répète', text: 'Chaque lettre, syllabe et mot se touche pour être entendu.' },
-  { icon: Sparkles, title: 'Une progression claire', text: 'Des lettres isolées aux voyelles, au soukoun et aux mots liés.' },
+  { icon: Sparkles, title: 'Une progression claire', text: 'D’abord le système de lecture, puis une lettre par leçon, retrouvée à chaque fois dans le Mushaf.' },
   { icon: BookOpenText, title: 'Jusqu’au Mushaf', text: 'Retrouve ce que tu apprends dans le texte coranique, en couleurs Tajweed.' },
 ];
 

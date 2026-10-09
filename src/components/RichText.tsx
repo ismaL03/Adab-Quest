@@ -8,12 +8,28 @@ const IS_ARABIC = new RegExp(`^[${ARABIC}]`);
 /**
  * Affiche un texte français contenant de l’arabe : chaque passage arabe est
  * automatiquement composé dans la police coranique, en sens RTL.
+ * Les passages entre **doubles astérisques** sont mis en valeur.
  */
 export function RichText({ text, arClassName = 'text-[1.3em]' }: { text: string; arClassName?: string }) {
-  const parts = text.split(RUN);
   return (
     <>
-      {parts.map((part, i) =>
+      {text.split(/\*\*(.+?)\*\*/g).map((segment, i) =>
+        i % 2 === 1 ? (
+          <strong key={i} className="font-semibold text-ink">
+            <Runs text={segment} arClassName={arClassName} />
+          </strong>
+        ) : (
+          <Runs key={i} text={segment} arClassName={arClassName} />
+        ),
+      )}
+    </>
+  );
+}
+
+function Runs({ text, arClassName }: { text: string; arClassName: string }) {
+  return (
+    <>
+      {text.split(RUN).map((part, i) =>
         part && IS_ARABIC.test(part) ? (
           <span key={i} dir="rtl" lang="ar" className={`font-quran inline-block ${arClassName}`} style={{ lineHeight: 1.25 }}>
             {part}

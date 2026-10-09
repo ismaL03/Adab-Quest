@@ -2,7 +2,7 @@
 
 **Iqra** (ٱقْرَأْ, « Lis ! ») est une application web **100 % gratuite**, au design premium, pour apprendre à lire l’arabe : des lettres isolées jusqu’à la lecture du Coran mot à mot, avec le code couleur du Tajweed.
 
-- **Carte de progression** interactive façon Duolingo : 9 étapes, 45 leçons, déverrouillage progressif.
+- **Carte de progression** interactive façon Duolingo : 8 étapes, 49 leçons, déverrouillage progressif.
 - **Apprentissage par l’écoute** (aucun micro, aucune reconnaissance vocale) : chaque lettre, syllabe et mot se touche pour être entendu, avec une animation d’onde synchronisée. **Uniquement des voix humaines** : récitation mot-à-mot de Quran.com pour le Coran, vos enregistrements pour les lettres — jamais de voix de synthèse.
 - **Vue Mushaf** : mise en page de Mushaf, couleurs Tajweed, mots cliquables (prononciation mot à mot), mise en évidence de la lettre, du signe ou de la règle étudiés.
 - **Gamification** : XP, niveaux, séries quotidiennes, objectif du jour, étoiles, combos, 13 badges, confettis et particules.
@@ -66,7 +66,7 @@ src/
 │   ├── letters.ts              28 lettres + hamza : nom, translittération, articulation
 │   ├── badges.ts               Définition des badges
 │   ├── curriculum/             Parcours pédagogique
-│   │   ├── modules.ts          Les 9 étapes et leurs leçons
+│   │   ├── modules.ts          Les 8 étapes et leurs leçons
 │   │   ├── builders.ts         Modèles de leçons et fabriques d’exercices
 │   │   ├── items.ts            Lettres, syllabes, mots → éléments cliquables + sons
 │   │   ├── words.ts            Vocabulaire vocalisé par notion
@@ -86,36 +86,55 @@ src/
 
 ## Parcours pédagogique
 
-La structure suit la progression de la méthode **« Ata‘allamu al-‘arabiyya »** (أتعلم العربية) de Cheikh Ayyoub (La Madrassah) : on avance du plus simple au plus complexe, en entendant puis en lisant.
+La structure suit la méthode **« Ata‘allamu al-‘arabiyya »** (أتعلم العربية) de Cheikh Ayyoub (La Madrassah) :
+
+1. **Comprendre d’abord le système** plutôt que d’apprendre l’alphabet par cœur : une lettre + une voyelle = un son, le soukoun, les voyelles longues (ا و ي).
+2. **Une lettre par leçon**, comme dans le livre : la lettre et son mot-clé, la lettre avec chaque voyelle (puis le tanwîn), voyelle courte / voyelle longue, des mots qui n’utilisent **que des lettres déjà étudiées** (vérifié par les tests), sa forme selon sa place dans le mot (seule, début, milieu, fin).
+3. **Les notions se glissent en chemin**, dès que les lettres nécessaires sont connues : tanwîn, lettres qui ne s’attachent pas, lîn (aw, ay), لا, chadda, tâ’ marbûṭa, hamza, alif maqsûra, lettres solaires et lunaires, alif de liaison…
+4. **Chaque nouvelle lettre se cherche dans le Mushaf**, pour se familiariser tout de suite avec la lecture du Coran.
 
 | Étape | Contenu |
 | --- | --- |
-| 1. Les lettres isolées | 28 lettres + hamza, lettres sœurs (points), sons proches (léger / épais) |
-| 2. Les voyelles courtes | Fatha, kasra, damma, les trois ensemble, lettres d’élévation |
-| 3. Le soukoun | Lettre sans voyelle, soukoun après chaque voyelle, qalqala |
-| 4. Les lettres liées | Lettres attachantes / non attachantes, formes début-milieu-fin, lecture de mots |
-| 5. Les voyelles longues | Madd avec alif, yâ’, wâw ; alif suscrit (ـٰ ۥ ۦ) ; lettres douces (lîn) |
-| 6. Le tanwîn | an · in · oun, distinction voyelle / tanwîn, mots |
-| 7. La chadda | Lettre doublée, mots, ghunna |
-| 8. L’article « al » | Lâm lunaire, lâm solaire, hamzat al-wasl |
-| 9. Vers le Mushaf | Al-Fâtiha, Al-Ikhlâs, Al-Falaq, An-Nâs mot à mot, lecture des couleurs du Tajweed |
+| 1. Comment se lit l’arabe | Lettre + voyelle = son, soukoun, voyelles longues, première lettre ب et l’écriture attachée |
+| 2. La famille du bâ’ | ت ث ن ي (et le son « ay »), le tanwîn, révision « les points font la différence » |
+| 3. Les lettres qui ne s’attachent pas | ر د و (et le son « aw ») ز ذ, révision attachée / pas attachée |
+| 4. Les lettres fréquentes | م ل (et لا), la chadda, ك ه, le tâ’ marbûṭa ة, س ش |
+| 5. La gorge et la hamza | ق ج ح خ, la hamza, l’alif maqsûra ى |
+| 6. Le soleil et la lune | L’article (lettres lunaires / solaires), ف, l’alif de liaison ٱ |
+| 7. Les dernières lettres | ع غ ص ض ط ظ, les lettres épaisses, la qalqala |
+| 8. Lire le Mushaf | Les petites lettres du Mushaf (ـٰ ۥ ۦ), lecture de phrases, Al-Fâtiha, Al-Ikhlâs, Al-Falaq, An-Nâs, couleurs du Tajweed |
+
+L’ordre exact des lettres du livre n’étant pas reproduit ici, il est défini en une ligne (`LETTER_ORDER` dans `src/data/curriculum/modules.ts`) avec les mots de chaque leçon dans `words.ts` : on peut l’aligner sur le sommaire du livre sans toucher au reste.
 
 Chaque leçon combine plusieurs types d’exercices : présentation, fiche de lettre, découverte (écouter chaque élément), QCM auditif, QCM visuel, association de paires, « écoute et répète » avec lecture guidée (surlignage karaoké), assemblage de syllabes, tableau des formes, chasse dans le Mushaf, lecture d’un verset, « quel mot as-tu entendu ? », remise en ordre d’un verset.
 Une question ratée revient automatiquement en fin de leçon.
 
-**Adapter le contenu** : tout le parcours est décrit en données dans `src/data/curriculum/` (modules, mots, textes). Ajouter une leçon revient à appeler un des modèles (`letterGroupLesson`, `wordsLesson`, `surahLesson`…) ou à écrire ses étapes avec les fabriques de `builders.ts`. Les tests (`npm test`) vérifient la cohérence de chaque leçon (bonne réponse présente, options uniques, syllabes qui recomposent le mot…).
+**Adapter le contenu** : tout le parcours est décrit en données dans `src/data/curriculum/` (modules, mots, textes). Ajouter une leçon revient à appeler un des modèles (`letterLesson`, `wordsLesson`, `surahLesson`…) ou à écrire ses étapes avec les fabriques de `builders.ts`. Les tests (`npm test`) vérifient la cohérence de chaque leçon (bonne réponse présente, options uniques, syllabes qui recomposent le mot…).
 
 ## Audio : uniquement des voix humaines
 
 Une prononciation approximative fait plus de mal que de bien à un apprenant : l’application **n’utilise aucune voix de synthèse**. Chaque élément cliquable est lu, dans l’ordre :
 
 1. par **votre enregistrement** `public/audio/<chemin>` s’il existe ;
-2. pour les mots du Coran, par la **récitation mot-à-mot de Quran.com** (connexion requise) — c’est aussi le cas des **77 mots de vocabulaire** des leçons qui figurent tels quels dans le Coran (`src/data/curriculum/quranWordAudio.json`, généré par `npm run quran:words`) ;
+2. pour les mots du Coran, par la **récitation mot-à-mot de Quran.com** (connexion requise) — c’est aussi le cas de **189 mots de vocabulaire** des leçons qui figurent tels quels dans le Coran (`src/data/curriculum/quranWordAudio.json`, généré par `npm run quran:words`) ;
 3. sinon, l’élément reste **silencieux** : seule l’animation est jouée, et un message l’explique une fois.
 
-La récitation en ligne fonctionne sur le site publié (voir « Déploiement ») ; elle est bloquée dans les aperçus intégrés qui interdisent l’audio externe. Les **lettres et syllabes** n’ont pas de source humaine libre : elles attendent vos enregistrements (enseignant, ou audio dont vous avez les droits).
+La récitation en ligne fonctionne sur le site publié (voir « Déploiement ») ; elle est bloquée dans les aperçus intégrés qui interdisent l’audio externe.
 
-### Ajouter des enregistrements
+**Enregistrements inclus** (141 fichiers, dans `public/audio/`) : le **nom des 28 lettres**, chaque lettre avec **fatha, kasra et damma** (84 syllabes) et les **mots-clés** des leçons, issus du dépôt [bubblesinarabic/alphabets-audio](https://github.com/bubblesinarabic/alphabets-audio) (silences coupés, volume harmonisé). Restent à enregistrer : voyelles longues, soukoun, tanwîn, chadda et les mots absents du Coran (`docs/audio-attendus.txt`).
+
+### Studio d’enregistrement (pour enseignant)
+
+Les sons encore muets (voyelles longues, soukoun, tanwîn, chadda, mots absents du Coran : 376 aujourd’hui) n’existent dans aucune source libre. Le **Studio** (`/studio`, accessible depuis le Profil ou depuis l’avertissement « Pas encore d’enregistrement ») permet de les enregistrer au micro, un par un :
+
+- carte guidée : texte arabe en grand, translittération, consigne (« allonge sur deux temps »…), bouton micro (ou touche Espace), réécoute, passage automatique au son suivant ;
+- silences coupés et volume harmonisé dans le navigateur ; les enregistrements sont **joués aussitôt sur cet appareil** (stockés localement) ;
+- **Exporter (.zip)** produit un fichier aux bons noms ; **Importer** recharge l’export d’un enseignant sur un autre appareil ;
+- pour les publier pour tout le monde : `npm run audio:import -- iqra-enregistrements-AAAA-MM-JJ.zip` (conversion MP3 avec ffmpeg, manifeste régénéré), puis commit.
+
+Les apprenants n’ont jamais besoin du micro : le Studio sert uniquement à créer les voix.
+
+### Ajouter des enregistrements à la main
 
 1. `npm run audio:list` écrit dans `docs/audio-attendus.txt` la liste des sons utilisés, avec le texte arabe à enregistrer.
 2. Déposez les fichiers dans `public/audio/` en respectant les chemins :
@@ -194,4 +213,5 @@ Le build standard (`npm run build` → `dist/`) est un site statique :
   npm run quran:build -- package/src/data
   ```
 - **Récitation mot-à-mot** : Quran.com (chargée en ligne, non redistribuée dans le dépôt).
+- **Lettres, syllabes et mots-clés** (`public/audio/letters`, `syllables`, `words/kw-*`, `words/tin`, `words/bayt`) : enregistrements de [Bubbles in Arabic](https://github.com/bubblesinarabic/alphabets-audio). Ce dépôt ne précise pas de licence : les droits restent à son auteur, dont l’autorisation doit être demandée pour une diffusion publique. Pour les retirer, il suffit de supprimer ces fichiers puis de lancer `npm run audio:manifest`.
 - **Interface** : Manrope et Fraunces (SIL OFL), icônes Lucide (ISC).

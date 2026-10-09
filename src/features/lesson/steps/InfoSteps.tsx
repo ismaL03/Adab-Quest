@@ -93,6 +93,20 @@ export function LetterStepView({ step, api }: StepProps<LetterStep>) {
           </div>
         </div>
       </div>
+      {step.keyword && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="glass flex items-center gap-4 rounded-3xl py-3 ps-5 pe-3"
+        >
+          <div className="text-start">
+            <p className="text-xs font-bold tracking-[0.14em] text-muted uppercase">Mot-clé</p>
+            <p className="text-[0.95rem] font-semibold text-ink-soft">{step.keyword.meaning}</p>
+          </div>
+          <SoundTile item={step.keyword} size="md" />
+        </motion.div>
+      )}
       {forms.length > 0 && (
         <div className="w-full max-w-xl">
           <p className="mb-2 text-center text-xs font-bold tracking-[0.14em] text-muted uppercase">Ses formes dans le mot</p>

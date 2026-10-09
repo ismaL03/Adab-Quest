@@ -1,51 +1,40 @@
 import { MARKS } from '@/lib/arabic';
-import { letter, SHAPE_FAMILIES, SOUND_PAIRS } from '@/data/letters';
+import { letter, SHAPE_FAMILIES } from '@/data/letters';
 import { sample, shuffle } from '@/lib/random';
 import {
-  ALPHABET_IDS,
   build,
   chunk,
-  confusables,
   discover,
   formItems,
   lesson,
-  letterGroupLesson,
+  letterLesson,
   listen,
   match,
   mushaf,
+  positionQuiz,
   readChoice,
   repeat,
+  shortLongLines,
   vowelRow,
   type Draft,
   type LessonDraft,
+  type LetterLessonInput,
 } from './builders';
 import {
   letterItem,
   maddItem,
-  shaddaItem,
   sukunItem,
   syllableItems,
   tanwinItem,
   textItem,
+  vowelItem,
   VOWELS,
   VOWEL_IDS,
   wordItem,
   type VowelId,
   type WordEntry,
 } from './items';
-import {
-  WORDS_DAGGER,
-  WORDS_GHUNNA,
-  WORDS_LIN,
-  WORDS_MADD,
-  WORDS_QAMARI,
-  WORDS_SHADDA,
-  WORDS_SHAMSI,
-  WORDS_SHORT_VOWELS,
-  WORDS_SUKUN,
-  WORDS_TANWIN,
-  WORDS_WASL,
-} from './words';
+import { KEYWORDS, LESSON_WORDS, SENTENCES, WORDS_QAMARI, WORDS_SHAMSI } from './words';
 import type { HighlightSpec } from '@/features/mushaf/highlight';
 import type { Passage } from '@/features/mushaf/passage';
 import type { Item, Module } from './types';
@@ -54,438 +43,75 @@ interface ModuleDraft extends Omit<Module, 'lessons'> {
   lessons: LessonDraft[];
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Étape 1 — Les lettres isolées
-   ════════════════════════════════════════════════════════════════════════ */
-
-const LETTER_GROUPS: { ids: string[]; title: string; subtitle: string }[] = [
-  { ids: ['alif', 'ba', 'ta', 'tha'], title: 'Alif, Bâ, Tâ, Thâ', subtitle: 'Les premières lettres et leurs points' },
-  { ids: ['jim', 'hha', 'kha'], title: 'Jîm, Ḥâ, Khâ', subtitle: 'Une même forme, trois sons' },
-  { ids: ['dal', 'dhal', 'ra', 'zay'], title: 'Dâl, Dhâl, Râ, Zây', subtitle: 'Quatre lettres qui ne se lient pas à gauche' },
-  { ids: ['sin', 'shin', 'sad', 'dad'], title: 'Sîn, Shîn, Ṣâd, Ḍâd', subtitle: 'Les dents et les lettres épaisses' },
-  { ids: ['taa', 'dhaa', 'ayn', 'ghayn'], title: 'Ṭâ, Ẓâ, ‘Ayn, Ghayn', subtitle: 'Emphase et sons de la gorge' },
-  { ids: ['fa', 'qaf', 'kaf', 'lam'], title: 'Fâ, Qâf, Kâf, Lâm', subtitle: 'Des boucles et des crochets' },
-  { ids: ['mim', 'nun', 'ha', 'waw', 'ya'], title: 'Mîm, Nûn, Hâ, Wâw, Yâ', subtitle: 'Les dernières lettres de l’alphabet' },
+/**
+ * Ordre d’apparition des lettres. Comme dans « Ata‘allamu al-‘arabiyya » :
+ * on comprend d’abord le système (lettre + voyelle = son), puis on découvre
+ * une lettre par leçon ; chaque nouvelle lettre permet de lire de nouveaux
+ * mots, et les notions (tanwîn, tâ’ marbûṭa, alif maqsûra…) se glissent en
+ * chemin, dès que les lettres nécessaires sont connues.
+ */
+export const LETTER_ORDER = [
+  'ba',
+  'ta',
+  'tha',
+  'nun',
+  'ya',
+  'ra',
+  'dal',
+  'waw',
+  'zay',
+  'dhal',
+  'mim',
+  'lam',
+  'kaf',
+  'ha',
+  'sin',
+  'shin',
+  'qaf',
+  'jim',
+  'hha',
+  'kha',
+  'fa',
+  'ayn',
+  'ghayn',
+  'sad',
+  'dad',
+  'taa',
+  'dhaa',
 ];
 
-const shapesReview = lesson({
-  id: 'lettres-soeurs',
-  title: 'Les lettres sœurs',
-  subtitle: 'Même squelette, points différents',
-  glyph: 'ث',
-  type: 'review',
-  steps: (rng) => {
-    const steps: Draft[] = [
-      {
-        kind: 'intro',
-        eyebrow: 'Révision',
-        title: 'Les points font la différence',
-        body: 'Plusieurs lettres partagent le même squelette : seuls le nombre et la position des points les distinguent. Observe bien chaque famille.',
-        items: ['ba', 'ta', 'tha', 'nun', 'ya'].map(letterItem),
-        tips: ['Un point dessous : ب', 'Deux points dessus : ت', 'Trois points dessus : ث'],
-      },
-    ];
-    for (const fam of SHAPE_FAMILIES.slice(0, 5)) {
-      steps.push(discover('Famille de lettres', fam.map(letterItem)));
-    }
-    for (const fam of shuffle(SHAPE_FAMILIES, rng)) {
-      const items = fam.map(letterItem);
-      const target = items[Math.floor(rng() * items.length)];
-      steps.push(listen(target, items, rng, Math.min(4, items.length)));
-    }
-    const all = SHAPE_FAMILIES.flat().map(letterItem);
-    steps.push(match(sample(all, 4, rng), rng, 'Associe chaque lettre à son nom'));
-    return steps;
-  },
-});
+/** Lettres connues une fois la leçon de `letterId` terminée. */
+const knownUpTo = (letterId: string) => LETTER_ORDER.slice(0, LETTER_ORDER.indexOf(letterId) + 1);
 
-const soundsReview = lesson({
-  id: 'sons-proches',
-  title: 'Les sons proches',
-  subtitle: 'Léger ou épais, gorge ou palais',
-  glyph: 'ط',
-  type: 'review',
-  steps: (rng) => {
-    const pairs = SOUND_PAIRS.map(([a, b]) => [vowelRow([a], 'fatha')[0], vowelRow([b], 'fatha')[0]]);
-    const steps: Draft[] = [
-      {
-        kind: 'intro',
-        eyebrow: 'Écoute attentive',
-        title: 'Entraîne ton oreille',
-        body: 'Certaines lettres se ressemblent à l’oreille. Les lettres épaisses (ص ض ط ظ ق خ غ) se prononcent bouche arrondie, la voix pleine ; leurs voisines légères restent fines.',
-        items: pairs.flat().slice(0, 6),
-        tips: ['تَ (léger) ≠ طَ (épais)', 'سَ (léger) ≠ صَ (épais)', 'هَ (souffle léger) ≠ حَ (gorge)'],
-      },
-      repeat('Paires de sons', pairs),
-    ];
-    for (const pair of shuffle(pairs, rng)) {
-      steps.push(listen(pair[Math.floor(rng() * 2)], pair, rng, 2, 'Léger ou épais ? Choisis le son entendu'));
-    }
-    steps.push(
-      mushaf('Repère les lettres épaisses (tafkhîm) dans le Coran.', { rules: ['tafkhim'], label: 'les lettres épaisses' }, 4),
-    );
-    return steps;
-  },
-});
+/** Le tanwîn est étudié juste après le yâ’ : il rejoint ensuite chaque ligne de voyelles. */
+const TANWIN_FROM = LETTER_ORDER.indexOf('ra');
 
-const hamzaLesson = lesson({
-  id: 'hamza',
-  title: 'La Hamza',
-  subtitle: 'Le coup de glotte et ses supports',
-  glyph: 'ء',
-  steps: (rng) => {
-    const seats = [textItem('أَ', 'a'), textItem('إِ', 'i'), textItem('أُ', 'ou'), textItem('ءَ', 'a')];
-    return [
-      {
-        kind: 'intro',
-        eyebrow: 'Signe spécial',
-        title: 'La hamza ء',
-        body: 'La hamza est un coup de glotte. Elle s’écrit seule (ء) ou posée sur un support : l’alif (أ / إ), le wâw (ؤ) ou le yâ’ sans points (ئ). C’est elle qui porte la voyelle au début des mots comme أَحَدٌ.',
-        hero: letterItem('hamza'),
-        items: [textItem('أ'), textItem('إ'), textItem('ؤ'), textItem('ئ')],
-      },
-      { kind: 'letter', letterId: 'hamza' },
-      discover('La hamza avec une voyelle', seats),
-      listen(seats[1], seats, rng, 3),
-      listen(seats[2], seats, rng, 3),
-      mushaf('Retrouve la hamza dans le texte coranique.', { letters: ['ء'], label: 'la hamza' }, 3),
-    ];
-  },
-});
-
-const MODULE_LETTERS: ModuleDraft = {
-  id: 'lettres',
-  index: 1,
-  title: 'Les lettres isolées',
-  titleAr: 'ٱلْحُرُوفُ',
-  description: 'Les 28 lettres de l’alphabet : leur nom, leur son et leur forme.',
-  lessons: [
-    ...LETTER_GROUPS.map((g, i) =>
-      letterGroupLesson({ id: `lettres-${i + 1}`, letterIds: g.ids, title: g.title, subtitle: g.subtitle }),
-    ),
-    hamzaLesson,
-    shapesReview,
-    soundsReview,
-  ],
-};
-
-/* ════════════════════════════════════════════════════════════════════════
-   Étape 2 — Les voyelles courtes
-   ════════════════════════════════════════════════════════════════════════ */
-
-const VOWEL_TEXT: Record<VowelId, { body: string; tip: string }> = {
-  fatha: {
-    body: 'La fatha est un petit trait oblique posé AU-DESSUS de la lettre. Elle donne le son « a » : بَ se lit « ba ».',
-    tip: 'Bouche ouverte, son bref.',
-  },
-  kasra: {
-    body: 'La kasra est un petit trait oblique placé EN DESSOUS de la lettre. Elle donne le son « i » : بِ se lit « bi ».',
-    tip: 'Lèvres étirées, son bref.',
-  },
-  damma: {
-    body: 'La damma est un petit wâw (ـُ) posé AU-DESSUS de la lettre. Elle donne le son « ou » : بُ se lit « bou ».',
-    tip: 'Lèvres arrondies, son bref.',
-  },
-};
-
-function vowelLesson(vowel: VowelId): LessonDraft {
-  const v = VOWELS[vowel];
-  return lesson({
-    id: `voyelle-${vowel}`,
-    title: `La ${v.name}`,
-    subtitle: `${v.nameAr} — le son « ${v.sound} »`,
-    glyph: vowelRow(['ba'], vowel)[0].ar,
-    steps: (rng) => {
-      const row = vowelRow(ALPHABET_IDS, vowel);
-      const head = row.slice(0, 10);
-      // Distracteurs : d’abord les lettres faciles à confondre, complétées au hasard.
-      const quizPool = (i: number): Item[] => {
-        const near = confusables(ALPHABET_IDS[i]).map((id) => vowelRow([id], vowel)[0]);
-        return near.length >= 3 ? near : [...near, ...sample(row.filter((_, j) => j !== i), 3 - near.length, rng)];
-      };
-      const quizIdx = sample(
-        row.map((_, i) => i),
-        5,
-        rng,
-      );
-      return [
-        {
-          kind: 'intro',
-          eyebrow: 'Voyelle courte',
-          title: `La ${v.name} ${v.nameAr}`,
-          body: VOWEL_TEXT[vowel].body,
-          hero: vowelRow(['ba'], vowel)[0],
-          tips: [VOWEL_TEXT[vowel].tip, 'Une voyelle courte dure un seul temps.'],
-        },
-        discover(`Les syllabes en « ${v.sound} »`, head),
-        repeat('Tout l’alphabet', chunk(row, 7)),
-        ...quizIdx.slice(0, 3).map((i) => listen(row[i], quizPool(i), rng)),
-        ...quizIdx.slice(3).map((i) => readChoice(row[i], row, rng)),
-        match(sample(row, 4, rng), rng),
-        mushaf(
-          `Repère la ${v.name} dans le texte coranique.`,
-          { marks: [v.mark], label: `la ${v.name}` },
-          5,
-        ),
-      ];
-    },
+function letterStep(
+  letterId: string,
+  subtitle: string,
+  extra: Partial<Pick<LetterLessonInput, 'notion' | 'passage'>> = {},
+): LessonDraft {
+  return letterLesson({
+    id: letterId,
+    letterId,
+    subtitle,
+    known: knownUpTo(letterId),
+    words: LESSON_WORDS[letterId] ?? [],
+    keyword: KEYWORDS[letterId],
+    tanwin: LETTER_ORDER.indexOf(letterId) >= TANWIN_FROM,
+    ...extra,
   });
 }
 
-const threeVowels = lesson({
-  id: 'trois-voyelles',
-  title: 'Les trois voyelles',
-  subtitle: 'a · i · ou sur une même lettre',
-  glyph: 'بُ',
-  steps: (rng) => {
-    const ids = ['ba', 'ta', 'jim', 'dal', 'sin', 'ayn', 'qaf', 'mim', 'nun', 'ha'];
-    const lines = ids.map((id) => VOWEL_IDS.map((v) => vowelRow([id], v)[0]));
-    const quizzes = sample(lines, 5, rng).map((line) =>
-      listen(line[Math.floor(rng() * 3)], line, rng, 3, 'Quelle voyelle as-tu entendue ?'),
-    );
-    return [
-      {
-        kind: 'intro',
-        eyebrow: 'Synthèse',
-        title: 'Fatha, kasra, damma',
-        body: 'Une même lettre change de son selon sa voyelle. Entraîne-toi à passer de l’une à l’autre : بَ بِ بُ.',
-        items: lines[0],
-      },
-      repeat('Lecture en trois temps', lines.slice(0, 6)),
-      ...quizzes,
-      ...sample(lines.flat(), 3, rng).map((it) => readChoice(it, lines.flat(), rng)),
-      match(sample(lines.flat(), 4, rng), rng),
-      mushaf('Choisis une voyelle et retrouve-la dans le Coran.', { marks: [MARKS.fatha], label: 'la Fatha' }, 4, {
-        filters: VOWEL_IDS.map((v) => ({
-          label: VOWELS[v].name,
-          highlight: { marks: [VOWELS[v].mark], label: `la ${VOWELS[v].name}` },
-        })),
-      }),
-    ];
-  },
-});
-
-const heavyLetters = lesson({
-  id: 'lettres-epaisses',
-  title: 'Lettres épaisses',
-  subtitle: 'Le tafkhîm avec les voyelles',
-  glyph: 'قَ',
-  type: 'review',
-  steps: (rng) => {
-    const heavy = ['kha', 'sad', 'dad', 'taa', 'dhaa', 'ghayn', 'qaf'];
-    const lines = heavy.map((id) => VOWEL_IDS.map((v) => vowelRow([id], v)[0]));
-    const pairs = [
-      ['ta', 'taa'],
-      ['sin', 'sad'],
-      ['dal', 'dad'],
-      ['kaf', 'qaf'],
-    ].map(([a, b]) => [vowelRow([a], 'fatha')[0], vowelRow([b], 'fatha')[0]]);
-    return [
-      {
-        kind: 'intro',
-        eyebrow: 'Tajweed',
-        title: 'Les 7 lettres d’élévation',
-        body: 'خ ص ض ط ظ غ ق sont toujours épaisses : le fond de la langue se relève. Leur fatha sonne plus grave, presque « o » : قَ, صَ, طَ.',
-        items: heavy.map(letterItem),
-        tips: ['Formule mnémotechnique : خُصَّ ضَغْطٍ قِظْ'],
-      },
-      repeat('Les lettres épaisses voyellées', lines),
-      ...pairs.map((p) => listen(p[Math.floor(rng() * 2)], p, rng, 2, 'Léger ou épais ?')),
-      mushaf('Retrouve les lettres épaisses dans le Coran.', { rules: ['tafkhim'], label: 'l’emphase' }, 4),
-    ];
-  },
-});
-
-const MODULE_VOWELS: ModuleDraft = {
-  id: 'voyelles',
-  index: 2,
-  title: 'Les voyelles courtes',
-  titleAr: 'ٱلْحَرَكَاتُ',
-  description: 'Fatha, kasra et damma : donner une voix aux lettres.',
-  lessons: [vowelLesson('fatha'), vowelLesson('kasra'), vowelLesson('damma'), threeVowels, heavyLetters],
-};
-
-/* ════════════════════════════════════════════════════════════════════════
-   Étape 3 — Le soukoun
-   ════════════════════════════════════════════════════════════════════════ */
-
-const SUKUN_IDS = ALPHABET_IDS.filter((id) => !['alif', 'waw', 'ya'].includes(id));
-
-const sukunIntro = lesson({
-  id: 'soukoun-1',
-  title: 'Le soukoun',
-  subtitle: 'Une lettre sans voyelle',
-  glyph: 'بْ',
-  steps: (rng) => {
-    const row = SUKUN_IDS.map((id) => sukunItem(id, 'fatha'));
-    return [
-      {
-        kind: 'intro',
-        eyebrow: 'Nouveau signe',
-        title: 'Le soukoun ـْ',
-        body: 'Le soukoun est un petit cercle posé au-dessus de la lettre. Il indique l’absence de voyelle : la lettre s’appuie sur la voyelle qui la précède. أَبْ se lit « ab ».',
-        hero: sukunItem('ba'),
-        tips: ['On ne commence jamais un mot par une lettre au soukoun.'],
-      },
-      discover('Lettres au soukoun', row.slice(0, 9)),
-      repeat('Lecture continue', chunk(row, 5)),
-      ...sample(row, 3, rng).map((it) => listen(it, row, rng)),
-      ...sample(row, 2, rng).map((it) => readChoice(it, row, rng)),
-      mushaf('Repère le soukoun dans le texte coranique.', { marks: [MARKS.sukun], label: 'le soukoun' }, 5),
-    ];
-  },
-});
-
-const sukunVowels = lesson({
-  id: 'soukoun-2',
-  title: 'Soukoun et voyelles',
-  subtitle: 'ab · ib · oub',
-  glyph: 'أُبْ',
-  steps: (rng) => {
-    const ids = ['ba', 'ta', 'dal', 'ra', 'sin', 'lam', 'mim', 'nun', 'fa', 'kaf'];
-    const lines = ids.map((id) => VOWEL_IDS.map((v) => sukunItem(id, v)));
-    return [
-      {
-        kind: 'intro',
-        eyebrow: 'Combinaison',
-        title: 'Le soukoun après chaque voyelle',
-        body: 'La voyelle qui précède la lettre au soukoun change tout : أَبْ « ab », إِبْ « ib », أُبْ « oub ».',
-        items: lines[0],
-      },
-      repeat('Lecture en trois temps', lines.slice(0, 6)),
-      ...sample(lines, 4, rng).map((line) => listen(line[Math.floor(rng() * 3)], line, rng, 3)),
-      match(sample(lines.flat(), 4, rng), rng),
-    ];
-  },
-});
-
-const qalqala = lesson({
-  id: 'qalqala',
-  title: 'La qalqala',
-  subtitle: 'Le rebond de قطب جد',
-  glyph: 'قْ',
-  steps: (rng) => {
-    const ids = ['qaf', 'taa', 'ba', 'jim', 'dal'];
-    const row = ids.map((id) => sukunItem(id, 'fatha'));
-    const lines = ids.map((id) => VOWEL_IDS.map((v) => sukunItem(id, v)));
-    return [
-      {
-        kind: 'intro',
-        eyebrow: 'Tajweed',
-        title: 'La qalqala قَلْقَلَة',
-        body: 'Cinq lettres — ق ط ب ج د (« qoṭbou jad ») — produisent un léger rebond sonore lorsqu’elles portent un soukoun. Écoute : أَقْ, أَطْ, أَبْ.',
-        items: row,
-        tips: ['Le rebond est plus fort en fin de verset (arrêt).'],
-      },
-      repeat('Écoute le rebond', lines),
-      ...sample(row, 3, rng).map((it) => listen(it, row, rng)),
-      mushaf('Retrouve les lettres de qalqala dans le Coran.', { rules: ['qalaqah'], label: 'la qalqala' }, 3),
-    ];
-  },
-});
-
-const MODULE_SUKUN: ModuleDraft = {
-  id: 'soukoun',
-  index: 3,
-  title: 'Le soukoun',
-  titleAr: 'ٱلسُّكُونُ',
-  description: 'Lire une lettre sans voyelle et découvrir la qalqala.',
-  lessons: [sukunIntro, sukunVowels, qalqala],
-};
-
-/* ════════════════════════════════════════════════════════════════════════
-   Étape 4 — Les lettres liées
-   ════════════════════════════════════════════════════════════════════════ */
-
-const formsLesson = (id: string, title: string, subtitle: string, letterIds: string[], glyph: string) =>
-  lesson({
-    id,
-    title,
-    subtitle,
-    glyph,
-    steps: (rng) => {
-      const forms = letterIds.flatMap(formItems);
-      const quizForms = sample(
-        forms.filter((f) => !f.id.endsWith(':isolated')),
-        4,
-        rng,
-      );
-      return [
-        {
-          kind: 'forms',
-          title: 'Début, milieu, fin',
-          prompt: 'Une lettre change de forme selon sa place dans le mot. Touche chaque forme pour l’écouter.',
-          letterIds,
-        },
-        ...quizForms.map(
-          (f): Draft => {
-            const lid = f.id.split(':')[1];
-            const options = [lid, ...sample(confusables(lid).length ? confusables(lid) : letterIds, 3, rng)];
-            return {
-              kind: 'choose',
-              prompt: 'Quelle lettre se cache dans cette forme ?',
-              question: { ar: f.ar, sound: f.sound },
-              options: shuffle(
-                [...new Set(options)].map((o) => ({ id: o, text: letter(o).char, arabic: true })),
-                rng,
-              ),
-              answerId: lid,
-            };
-          },
-        ),
-        mushaf('Observe ces lettres liées dans le Coran.', { letters: letterIds.map((l) => letter(l).char) }, 4, {
-          filters: letterIds.map((l) => ({ label: letter(l).char, highlight: { letters: [letter(l).char] } })),
-        }),
-      ];
-    },
-  });
-
-const connectors = lesson({
-  id: 'liees-1',
-  title: 'Lettres qui se lient',
-  subtitle: 'Et les six qui ne se lient pas',
-  glyph: 'بـ',
-  steps: (rng) => {
-    const non = ['alif', 'dal', 'dhal', 'ra', 'zay', 'waw'];
-    const connecting = ['ba', 'jim', 'sin', 'ayn', 'fa', 'mim', 'ha', 'kaf'];
-    const yesNo = (id: string): Draft => ({
-      kind: 'choose',
-      prompt: 'Cette lettre se lie-t-elle à la lettre qui la suit ?',
-      question: { ar: letter(id).char, sound: letterItem(id).sound },
-      options: [
-        { id: 'oui', text: 'Oui, des deux côtés' },
-        { id: 'non', text: 'Non, seulement à droite' },
-      ],
-      answerId: non.includes(id) ? 'non' : 'oui',
-      explain: 'ا د ذ ر ز و ne se lient jamais à la lettre suivante.',
-    });
-    return [
-      {
-        kind: 'intro',
-        eyebrow: 'Écriture liée',
-        title: 'L’arabe s’écrit attaché',
-        body: 'Dans un mot, les lettres se lient entre elles, de droite à gauche. Six lettres font exception : ا د ذ ر ز و ne se lient qu’à la lettre précédente, jamais à la suivante.',
-        items: non.map(letterItem),
-        tips: ['Après ces six lettres, le mot « se coupe » visuellement : دَرَسَ, وَرَدَ.'],
-      },
-      {
-        kind: 'forms',
-        title: 'Les six lettres non attachantes',
-        prompt: 'Remarque : elles n’ont que deux formes (isolée et finale).',
-        letterIds: non,
-      },
-      ...shuffle([...sample(non, 3, rng), ...sample(connecting, 3, rng)], rng).map(yesNo),
-    ];
-  },
-});
-
+/** Leçon de lecture de mots autour d’une notion. */
 function wordsLesson(opts: {
   id: string;
   title: string;
   subtitle: string;
   glyph: string;
   words: WordEntry[];
-  intro: string;
+  intro: { eyebrow: string; body: string; tips?: string[]; items?: Item[] };
+  extra?: (rng: () => number, items: Item[]) => Draft[];
   highlight?: { prompt: string; spec: HighlightSpec; goal?: number; passage?: Passage };
   type?: 'lesson' | 'review';
 }): LessonDraft {
@@ -502,17 +128,24 @@ function wordsLesson(opts: {
       const steps: Draft[] = [
         {
           kind: 'intro',
-          eyebrow: 'Lecture',
+          eyebrow: opts.intro.eyebrow,
           title: opts.title,
-          body: opts.intro,
-          hero: items[0],
+          body: opts.intro.body,
+          hero: opts.intro.items ? undefined : items[0],
+          items: opts.intro.items,
+          tips: opts.intro.tips,
         },
+        ...(opts.extra?.(rng, items) ?? []),
         discover('Écoute et lis chaque mot', items, 'Touche chaque mot : écoute, observe, puis relis-le seul.'),
         repeat('Lecture guidée', chunk(items, 3)),
-        ...sample(opts.words, 3, rng).map((w) => build(w, rng, allSyllables)),
-        ...sample(items, 3, rng).map((it) => listen(it, items, rng)),
+        ...sample(
+          opts.words.filter((w) => syllableItems(w.ar).length >= 2),
+          2,
+          rng,
+        ).map((w) => build(w, rng, allSyllables)),
+        ...sample(items, 2, rng).map((it) => listen(it, items, rng, 4, 'Quel mot as-tu entendu ?')),
         ...sample(items, 2, rng).map((it) => readChoice(it, items, rng)),
-        match(sample(items, 4, rng), rng, 'Associe chaque mot à sa lecture'),
+        match(items, rng, 'Associe chaque mot à sa lecture'),
       ];
       if (opts.highlight) {
         const { prompt, spec, goal = 4, passage } = opts.highlight;
@@ -523,310 +156,631 @@ function wordsLesson(opts: {
   });
 }
 
-const MODULE_CONNECTED: ModuleDraft = {
-  id: 'liees',
-  index: 4,
-  title: 'Les lettres liées',
-  titleAr: 'ٱلْحُرُوفُ ٱلْمُتَّصِلَةُ',
-  description: 'Reconnaître les lettres au début, au milieu et à la fin des mots, puis lire des mots entiers.',
-  lessons: [
-    connectors,
-    formsLesson('liees-2', 'La famille du Bâ', 'ب ت ث ن ي dans les mots', ['ba', 'ta', 'tha', 'nun', 'ya'], 'ـبـ'),
-    formsLesson('liees-3', 'Gorge et crochets', 'ج ح خ ع غ ه dans les mots', ['jim', 'hha', 'kha', 'ayn', 'ghayn', 'ha'], 'ـعـ'),
-    formsLesson('liees-4', 'Les autres formes', 'س ش ص ض ط ظ ف ق ك ل م', ['sin', 'sad', 'taa', 'fa', 'qaf', 'kaf', 'lam', 'mim'], 'ـكـ'),
-    wordsLesson({
-      id: 'liees-5',
-      title: 'Lire des mots',
-      subtitle: 'Les voyelles courtes dans le mot',
-      glyph: 'كَتَبَ',
-      words: WORDS_SHORT_VOWELS,
-      intro: 'Tu connais les lettres et les voyelles : lis maintenant des mots entiers, syllabe par syllabe. كَتَبَ = كَ + تَ + بَ.',
-      highlight: { prompt: 'Retrouve la fatha dans le Coran.', spec: { marks: [MARKS.fatha], label: 'la fatha' }, goal: 5 },
-    }),
-    wordsLesson({
-      id: 'liees-6',
-      title: 'Mots avec soukoun',
-      subtitle: 'Des syllabes fermées',
-      glyph: 'قُلْ',
-      words: WORDS_SUKUN,
-      intro: 'Le soukoun ferme la syllabe : قُلْ « qoul », نَعْ·بُ·دُ « na‘boudou ». Lis lentement, puis enchaîne.',
-      highlight: { prompt: 'Retrouve le soukoun dans le Coran.', spec: { marks: [MARKS.sukun], label: 'le soukoun' }, goal: 5 },
-    }),
-  ],
-};
-
 /* ════════════════════════════════════════════════════════════════════════
-   Étape 5 — Les voyelles longues
+   Étape 1 — Comment se lit l’arabe
    ════════════════════════════════════════════════════════════════════════ */
 
-const MADD_TEXT: Record<VowelId, string> = {
-  fatha: 'Une fatha suivie d’un alif (sans signe) s’allonge sur deux temps : بَا « bâ ».',
-  kasra: 'Une kasra suivie d’un yâ’ (sans signe) s’allonge sur deux temps : بِي « bî ».',
-  damma: 'Une damma suivie d’un wâw (sans signe) s’allonge sur deux temps : بُو « boû ».',
+const VOWEL_TEXT: Record<VowelId, string> = {
+  fatha: 'La **fatha** est un petit trait posé **au-dessus** de la lettre. Elle donne le son « a » : بَ se lit « ba ».',
+  kasra: 'La **kasra** est un petit trait placé **en dessous** de la lettre. Elle donne le son « i » : بِ se lit « bi ».',
+  damma: 'La **damma** est un petit wâw posé **au-dessus** de la lettre. Elle donne le son « ou » : بُ se lit « bou ».',
 };
 
-function maddLesson(vowel: VowelId): LessonDraft {
-  const v = VOWELS[vowel];
-  const ids = ALPHABET_IDS.filter((id) => id !== 'alif');
-  return lesson({
-    id: `madd-${vowel}`,
-    title: `Le madd avec ${v.carrier}`,
-    subtitle: `Le son long « ${v.long} »`,
-    glyph: maddItem('ba', vowel).ar,
-    steps: (rng) => {
-      const row = ids.map((id) => maddItem(id, vowel));
-      const contrast = sample(['ba', 'ta', 'nun', 'mim', 'lam', 'sin', 'qaf', 'ra'], 5, rng).map((id) => [
-        vowelRow([id], vowel)[0],
-        maddItem(id, vowel),
-      ]);
-      return [
-        {
+const soundsLesson = lesson({
+  id: 'sons',
+  title: 'Lettre + voyelle = son',
+  subtitle: 'Le principe de la lecture arabe',
+  glyph: 'بَ',
+  steps: (rng) => {
+    const row = VOWEL_IDS.map((v) => vowelItem('ba', v));
+    const which = (v: VowelId): Draft => ({
+      kind: 'choose',
+      prompt: `Quelle syllabe se lit « b${VOWELS[v].sound} » ?`,
+      question: { text: `Le son « b${VOWELS[v].sound} »` },
+      options: row.map((it, i) => ({ id: VOWEL_IDS[i], text: it.ar, arabic: true })),
+      answerId: v,
+      explain: VOWEL_TEXT[v].replace(/\*\*/g, ''),
+    });
+    return [
+      {
+        kind: 'intro',
+        eyebrow: 'Comment se lit l’arabe',
+        title: 'Une lettre + une voyelle = un son',
+        body: 'L’arabe se lit **de droite à gauche**. Ses lettres sont des **consonnes** : seules, elles ne font pas de son. On leur ajoute de petits signes, les **voyelles**, pour les faire sonner. Toute la lecture repose sur ce principe.',
+        hero: letterItem('ba'),
+        tips: ['ب avec une fatha → بَ « ba »', 'ب avec une kasra → بِ « bi »', 'ب avec une damma → بُ « bou »'],
+      },
+      ...VOWEL_IDS.map(
+        (v, i): Draft => ({
           kind: 'intro',
-          eyebrow: 'Voyelle longue',
-          title: `Le madd « ${v.long} »`,
-          body: MADD_TEXT[vowel],
-          hero: maddItem('ba', vowel),
-          tips: ['Voyelle courte = 1 temps, voyelle longue = 2 temps.', 'Les trois lettres de prolongation : ا و ي'],
-        },
-        repeat('Court ou long ?', contrast),
-        discover(`Syllabes en « ${v.long} »`, row.slice(0, 9)),
-        ...contrast.slice(0, 4).map((pair) => listen(pair[Math.floor(rng() * 2)], pair, rng, 2, 'Court ou long ?')),
-        ...sample(row, 2, rng).map((it) => readChoice(it, row, rng)),
-        mushaf('Repère les voyelles longues (madd naturel) dans le Coran.', { rules: ['madda_normal'], label: 'le madd naturel' }, 4),
-      ];
-    },
-  });
-}
-
-const MODULE_MADD: ModuleDraft = {
-  id: 'madd',
-  index: 5,
-  title: 'Les voyelles longues',
-  titleAr: 'حُرُوفُ ٱلْمَدِّ',
-  description: 'Allonger le son avec alif, wâw et yâ’, et lire l’alif suscrit du Mushaf.',
-  lessons: [
-    maddLesson('fatha'),
-    maddLesson('kasra'),
-    maddLesson('damma'),
-    wordsLesson({
-      id: 'madd-mots',
-      title: 'Mots avec madd',
-      subtitle: 'Lire des voyelles longues',
-      glyph: 'قَالَ',
-      words: WORDS_MADD,
-      intro: 'Allonge bien chaque voyelle longue sur deux temps : قَا·لَ « qâla », يَ·قُو·لُ « yaqoûlou ».',
-      highlight: { prompt: 'Retrouve les madd naturels dans le Coran.', spec: { rules: ['madda_normal'] }, goal: 4 },
-    }),
-    wordsLesson({
-      id: 'madd-suscrit',
-      title: 'L’alif suscrit',
-      subtitle: 'ـٰ ۥ ۦ : les petites lettres du Mushaf',
-      glyph: 'مَٰ',
-      words: WORDS_DAGGER,
-      intro: 'Dans le Mushaf, certains madd s’écrivent avec une petite lettre : l’alif suscrit (ـٰ) se lit « â », le petit wâw (ۥ) « oû » et le petit yâ’ (ۦ) « î ». مَٰلِكِ se lit « mâliki ».',
-      highlight: {
-        prompt: 'Retrouve l’alif suscrit et les petites lettres dans le Coran.',
-        spec: { marks: [MARKS.daggerAlif, MARKS.smallWaw, MARKS.smallYa], label: 'l’alif suscrit' },
-        goal: 3,
-      },
-    }),
-    wordsLesson({
-      id: 'lin',
-      title: 'Les lettres douces',
-      subtitle: 'aw · ay (lîn)',
-      glyph: 'يَوْ',
-      words: WORDS_LIN,
-      intro: 'Un wâw ou un yâ’ au soukoun précédé d’une fatha forme une diphtongue douce : يَوْمِ « yawmi », بَيْتٌ « baytoun ».',
-      highlight: {
-        prompt: 'Observe le wâw et le yâ’ dans la sourate Quraysh.',
-        spec: { letters: ['و', 'ي'], label: 'wâw et yâ’' },
-        goal: 3,
-        passage: { surah: 106, from: 1, to: 4 },
-      },
-    }),
-  ],
-};
-
-/* ════════════════════════════════════════════════════════════════════════
-   Étape 6 — Le tanwîn
-   ════════════════════════════════════════════════════════════════════════ */
-
-const TANWIN_MARKS = [MARKS.tanwinFath, MARKS.tanwinKasr, MARKS.tanwinDamm];
-
-const tanwinBasics = lesson({
-  id: 'tanwin-1',
-  title: 'Le tanwîn',
-  subtitle: 'an · in · oun',
-  glyph: 'بٌ',
-  steps: (rng) => {
-    const ids = ['ba', 'ta', 'dal', 'ra', 'sin', 'lam', 'mim', 'nun', 'qaf', 'kaf'];
-    const lines = ids.map((id) => (['fatha', 'kasra', 'damma'] as VowelId[]).map((v) => tanwinItem(id, v)));
-    return [
-      {
-        kind: 'intro',
-        eyebrow: 'Voyelle doublée',
-        title: 'Le tanwîn ـً ـٍ ـٌ',
-        body: 'Le tanwîn est une voyelle doublée qui ajoute un son « n » en fin de mot : بًا « ban », بٍ « bin », بٌ « boun ». Le tanwîn fath s’écrit avec un alif de support.',
-        items: lines[0],
-        tips: ['On ne prononce pas l’alif du tanwîn fath.'],
-      },
-      repeat('an · in · oun', lines.slice(0, 6)),
-      ...sample(lines, 4, rng).map((line) => listen(line[Math.floor(rng() * 3)], line, rng, 3)),
-      ...sample(lines.flat(), 2, rng).map((it) => readChoice(it, lines.flat(), rng)),
-      match(sample(lines.flat(), 4, rng), rng),
-      mushaf('Retrouve le tanwîn dans le Coran.', { marks: TANWIN_MARKS, label: 'le tanwîn' }, 4),
+          eyebrow: `Voyelle courte · ${VOWELS[v].nameAr}`,
+          title: `La ${VOWELS[v].name}`,
+          body: VOWEL_TEXT[v],
+          hero: row[i],
+          tips: ['Une voyelle courte se prononce brièvement : un seul temps.'],
+        }),
+      ),
+      discover('Trois voyelles, trois sons', row, 'Touche chaque syllabe : seule la voyelle change.'),
+      ...shuffle(row, rng).map((it) => listen(it, row, rng, 3, 'Quelle syllabe as-tu entendue ?')),
+      ...sample(VOWEL_IDS, 2, rng).map(which),
+      match(row, rng, 'Associe chaque syllabe à son son'),
+      mushaf('Choisis une voyelle et retrouve-la dans le Coran.', { marks: [MARKS.fatha], label: 'la fatha' }, 4, {
+        filters: VOWEL_IDS.map((v) => ({
+          label: VOWELS[v].name,
+          highlight: { marks: [VOWELS[v].mark], label: `la ${VOWELS[v].name}` },
+        })),
+      }),
     ];
   },
 });
 
-const tanwinContrast = lesson({
-  id: 'tanwin-2',
-  title: 'Voyelle ou tanwîn ?',
-  subtitle: 'Distinguer ba / ban',
-  glyph: 'بًا',
-  type: 'review',
+const sukunLesson = lesson({
+  id: 'soukoun',
+  title: 'Le soukoun',
+  subtitle: 'Une lettre sans voyelle',
+  glyph: 'بْ',
   steps: (rng) => {
-    const ids = ['ba', 'ta', 'dal', 'ra', 'sin', 'lam', 'mim', 'qaf'];
-    const pairs = ids.flatMap((id) =>
-      (['fatha', 'kasra', 'damma'] as VowelId[]).map((v) => [vowelRow([id], v)[0], tanwinItem(id, v)]),
-    );
-    return [
-      {
-        kind: 'intro',
-        eyebrow: 'Oreille fine',
-        title: 'Simple ou doublée ?',
-        body: 'Compare bien : بَ « ba » et بًا « ban », بِ « bi » et بٍ « bin ». La différence est le petit « n » final.',
-        items: pairs[0],
-      },
-      repeat('Comparer', sample(pairs, 6, rng)),
-      ...sample(pairs, 6, rng).map((p) => listen(p[Math.floor(rng() * 2)], p, rng, 2, 'Voyelle ou tanwîn ?')),
-    ];
-  },
-});
-
-const MODULE_TANWIN: ModuleDraft = {
-  id: 'tanwin',
-  index: 6,
-  title: 'Le tanwîn',
-  titleAr: 'ٱلتَّنْوِينُ',
-  description: 'La voyelle doublée qui fait entendre un « n » final.',
-  lessons: [
-    tanwinBasics,
-    tanwinContrast,
-    wordsLesson({
-      id: 'tanwin-mots',
-      title: 'Mots avec tanwîn',
-      subtitle: 'Lire la fin des mots',
-      glyph: 'أَحَدٌ',
-      words: WORDS_TANWIN,
-      intro: 'Lis ces mots en faisant bien entendre le tanwîn final : أَحَدٌ « aḥadoun », عِلْمًا « ‘ilman ».',
-      highlight: { prompt: 'Retrouve le tanwîn dans le Coran.', spec: { marks: TANWIN_MARKS, label: 'le tanwîn' }, goal: 4 },
-    }),
-  ],
-};
-
-/* ════════════════════════════════════════════════════════════════════════
-   Étape 7 — La chadda
-   ════════════════════════════════════════════════════════════════════════ */
-
-const shaddaBasics = lesson({
-  id: 'chadda-1',
-  title: 'La chadda',
-  subtitle: 'Doubler une lettre',
-  glyph: 'بّ',
-  steps: (rng) => {
-    const ids = ['ba', 'ta', 'dal', 'ra', 'sin', 'lam', 'qaf', 'kaf', 'fa', 'ha'];
-    const lines = ids.map((id) => VOWEL_IDS.map((v) => shaddaItem(id, v)));
+    const closed = VOWEL_IDS.map((v) => textItem('ب' + VOWELS[v].mark + 'بْ', `b${VOWELS[v].sound}b`));
+    const open = VOWEL_IDS.map((v) => vowelItem('ba', v));
     return [
       {
         kind: 'intro',
         eyebrow: 'Nouveau signe',
-        title: 'La chadda ـّ',
-        body: 'La chadda ressemble à un petit « w ». Elle double la lettre : la première est au soukoun, la seconde porte la voyelle. أَبَّ = أَبْ + بَ « abba ».',
-        hero: shaddaItem('ba'),
-        tips: ['Appuie sur la lettre doublée, sans la répéter deux fois.'],
+        title: 'Le soukoun ـْ',
+        body: 'Le **soukoun** est un petit rond posé sur la lettre : elle n’a **pas de voyelle**. Elle se colle alors au son qui la précède : بَ + بْ = بَبْ « bab ».',
+        hero: textItem('بْ', 'b'),
+        tips: ['Un mot ne commence jamais par une lettre au soukoun.', 'Dans le Mushaf, le soukoun s’écrit parfois comme une petite tête de ḥâ’ : ـۡ'],
       },
-      repeat('Lettres doublées', lines.slice(0, 6)),
-      ...sample(lines, 4, rng).map((line) => listen(line[Math.floor(rng() * 3)], line, rng, 3)),
-      ...sample(lines.flat(), 2, rng).map((it) => readChoice(it, lines.flat(), rng)),
-      mushaf('Retrouve la chadda dans le Coran.', { marks: [MARKS.shadda], label: 'la chadda' }, 5),
+      repeat('Ouvert ou fermé ?', open.map((o, i) => [o, closed[i]]), 'Écoute la syllabe, puis la même fermée par un soukoun.'),
+      discover('Syllabes fermées', closed),
+      ...shuffle(closed, rng).map((it) => listen(it, [...closed, ...open], rng, 3, 'Quelle syllabe as-tu entendue ?')),
+      readChoice(closed[1], closed, rng),
+      mushaf('Retrouve le soukoun dans le Coran.', { marks: [MARKS.sukun, MARKS.sukunQuranic], label: 'le soukoun' }, 4),
     ];
   },
 });
 
-const MODULE_SHADDA: ModuleDraft = {
-  id: 'chadda',
-  index: 7,
-  title: 'La chadda',
-  titleAr: 'ٱلشَّدَّةُ',
-  description: 'La lettre doublée et la ghunna, nasalisation du nûn et du mîm.',
+const longVowelsLesson = lesson({
+  id: 'voyelles-longues',
+  title: 'Les voyelles longues',
+  subtitle: 'ا · و · ي : allonger le son',
+  glyph: 'بَا',
+  steps: (rng) => {
+    const lines = shortLongLines('ba');
+    const longs = lines.map((l) => l[1]);
+    return [
+      {
+        kind: 'intro',
+        eyebrow: 'Voyelles longues',
+        title: 'Trois lettres pour allonger',
+        body: 'Trois lettres servent à **allonger** les voyelles. Elles ne portent aucun signe : on prolonge simplement le son sur **deux temps**. ا après une fatha, ي après une kasra, و après une damma.',
+        items: ['alif', 'waw', 'ya'].map(letterItem),
+        tips: ['بَ « ba » → بَا « bâ »', 'بِ « bi » → بِي « bî »', 'بُ « bou » → بُو « boû »'],
+      },
+      { kind: 'letter', letterId: 'alif' },
+      repeat('Court ou long ?', lines, 'Écoute la voyelle courte puis la voyelle longue, et répète.'),
+      discover('Les sons longs', longs),
+      ...shuffle(lines, rng).map((pair) => listen(pair[Math.floor(rng() * 2)], pair, rng, 2, 'Court ou long ?')),
+      ...sample(longs, 2, rng).map((it) => readChoice(it, [...longs, ...lines.map((l) => l[0])], rng)),
+      match([...longs, ...lines.map((l) => l[0])], rng, 'Associe chaque syllabe à son son'),
+      mushaf('Repère les voyelles longues dans le Coran.', { rules: ['madda_normal'], label: 'la voyelle longue' }, 4),
+    ];
+  },
+});
+
+const MODULE_SYSTEM: ModuleDraft = {
+  id: 'systeme',
+  index: 1,
+  title: 'Comment se lit l’arabe',
+  titleAr: 'كَيْفَ نَقْرَأُ',
+  description: 'Le principe de la lecture : lettre + voyelle = son, le soukoun, les voyelles longues, puis la première lettre.',
   lessons: [
-    shaddaBasics,
-    wordsLesson({
-      id: 'chadda-mots',
-      title: 'Mots avec chadda',
-      subtitle: 'رَبِّ · ثُمَّ · عَلَّمَ',
-      glyph: 'رَبِّ',
-      words: WORDS_SHADDA,
-      intro: 'Lis ces mots en appuyant sur la lettre doublée : رَبِّ « rabbi », عَلَّمَ « ‘allama ».',
-      highlight: { prompt: 'Retrouve la chadda dans le Coran.', spec: { marks: [MARKS.shadda], label: 'la chadda' }, goal: 5 },
-    }),
-    wordsLesson({
-      id: 'ghunna',
-      title: 'La ghunna',
-      subtitle: 'نّ et مّ : la nasalisation',
-      glyph: 'إِنَّ',
-      words: WORDS_GHUNNA,
-      intro: 'Un nûn ou un mîm avec chadda se prononce avec une nasalisation (ghunna) de deux temps, le son passant par le nez : إِنَّ, ثُمَّ.',
-      highlight: { prompt: 'Retrouve la ghunna (nûn ou mîm avec chadda) dans le Coran.', spec: { rules: ['ghunnah'], label: 'la ghunna' }, goal: 3 },
+    soundsLesson,
+    sukunLesson,
+    longVowelsLesson,
+    letterStep('ba', 'Ta première lettre', {
+      notion: {
+        eyebrow: 'L’écriture attachée',
+        title: 'Les lettres se lient',
+        body: 'Dans un mot, les lettres **s’attachent** les unes aux autres, de droite à gauche. Une lettre change donc un peu de forme selon sa place : **seule**, **au début**, **au milieu** ou **à la fin** du mot.',
+        items: formItems('ba'),
+        tips: ['بـ au début · ـبـ au milieu · ـب à la fin · ب seule'],
+      },
     }),
   ],
 };
 
 /* ════════════════════════════════════════════════════════════════════════
-   Étape 8 — L’article et la hamzat al-wasl
+   Étape 2 — La famille du bâ’
    ════════════════════════════════════════════════════════════════════════ */
+
+const tanwinLesson = wordsLesson({
+  id: 'tanwin',
+  title: 'Le tanwîn',
+  subtitle: 'an · in · oun',
+  glyph: 'بٌ',
+  words: LESSON_WORDS.tanwin,
+  intro: {
+    eyebrow: 'Voyelle doublée',
+    body: 'À la fin d’un mot, la voyelle peut être **doublée** : c’est le **tanwîn**. Il fait entendre un **ن** final : بًا « ban », بٍ « bin », بٌ « boun ». Le tanwîn fath s’écrit avec un alif, qu’on ne prononce pas.',
+    items: VOWEL_IDS.map((v) => tanwinItem('ba', v)),
+    tips: ['ـً « an » · ـٍ « in » · ـٌ « oun »', 'Le tanwîn s’écrit seulement à la fin des mots.'],
+  },
+  extra: (rng) => {
+    const ids = ['ba', 'ta', 'tha', 'nun'];
+    const pairs = ids.flatMap((id) => VOWEL_IDS.map((v) => [vowelItem(id, v), tanwinItem(id, v)]));
+    return [
+      repeat('Simple ou doublée ?', sample(pairs, 6, rng), 'Compare la voyelle simple et le tanwîn.'),
+      ...sample(pairs, 4, rng).map((p) => listen(p[Math.floor(rng() * 2)], p, rng, 2, 'Voyelle simple ou tanwîn ?')),
+    ];
+  },
+  highlight: { prompt: 'Retrouve le tanwîn dans le Coran.', spec: { marks: [MARKS.tanwinFath, MARKS.tanwinKasr, MARKS.tanwinDamm], label: 'le tanwîn' }, goal: 4 },
+});
+
+const dotsReview = lesson({
+  id: 'points',
+  title: 'Les points font la différence',
+  subtitle: 'ب ت ث ن ي : un même squelette',
+  glyph: 'ث',
+  type: 'review',
+  steps: (rng) => {
+    const family = SHAPE_FAMILIES[0];
+    const items = family.map(letterItem);
+    const syll = family.map((id) => vowelItem(id, 'fatha'));
+    return [
+      {
+        kind: 'intro',
+        eyebrow: 'Révision',
+        title: 'Un squelette, cinq lettres',
+        body: 'ب ت ث ن ي partagent le même squelette : seuls le **nombre** et la **place des points** les distinguent. Regarde bien avant de lire !',
+        items,
+        tips: ['Un point dessous : ب', 'Deux points dessus : ت · trois points dessus : ث', 'Un point dessus : ن · deux points dessous : ي'],
+      },
+      { kind: 'forms', title: 'Leurs formes dans le mot', prompt: 'Au début et au milieu du mot, seuls les points permettent de les reconnaître.', letterIds: family },
+      ...shuffle(syll, rng).map((it) => listen(it, syll, rng, 4, 'Quelle lettre as-tu entendue ?')),
+      ...sample(items, 2, rng).map((it) => readChoice(it, items, rng, { prompt: 'Quel est le nom de cette lettre ?' })),
+      match(items, rng, 'Associe chaque lettre à son nom'),
+      mushaf('Choisis une lettre et retrouve-la dans le Coran.', { letters: ['ب'], label: 'la lettre Bâ' }, 4, {
+        filters: family.map((id) => ({ label: letter(id).char, highlight: { letters: [letter(id).char], label: `la lettre ${letter(id).name}` } })),
+      }),
+    ];
+  },
+});
+
+const MODULE_BA: ModuleDraft = {
+  id: 'famille-ba',
+  index: 2,
+  title: 'La famille du bâ’',
+  titleAr: 'عَائِلَةُ ٱلْبَاءِ',
+  description: 'Quatre lettres au même squelette, tes premiers mots et le tanwîn.',
+  lessons: [
+    letterStep('ta', 'Deux points au-dessus'),
+    letterStep('tha', 'Trois points au-dessus', {
+      notion: {
+        eyebrow: 'Astuce',
+        title: 'ث = ت + un point',
+        body: 'Le **thâ’** a la forme du tâ’ avec **trois points**. Il se prononce la langue entre les dents, comme le « th » anglais de « think ».',
+        items: ['ba', 'ta', 'tha'].map(letterItem),
+      },
+    }),
+    letterStep('nun', 'Un point au-dessus'),
+    letterStep('ya', 'Consonne et voyelle longue', {
+      notion: {
+        eyebrow: 'Notion',
+        title: 'Le yâ’, consonne ou voyelle',
+        body: 'Avec une voyelle, ي est une **consonne** : يَ « ya ». Sans signe après une kasra, il **allonge** le son : بِي « bî ». Avec un soukoun après une fatha, il forme le son doux **« ay »** : بَيْ « bay ».',
+        items: [vowelItem('ya', 'fatha'), maddItem('ba', 'kasra'), textItem('بَيْ', 'bay')],
+        tips: ['بَيْنَ se lit « bayna » : entre.'],
+      },
+    }),
+    tanwinLesson,
+    dotsReview,
+  ],
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   Étape 3 — Les lettres qui ne s’attachent pas
+   ════════════════════════════════════════════════════════════════════════ */
+
+const NON_CONNECTING = ['alif', 'dal', 'dhal', 'ra', 'zay', 'waw'];
+
+const attachReview = lesson({
+  id: 'attachees',
+  title: 'Attachée ou pas ?',
+  subtitle: 'ا د ذ ر ز و',
+  glyph: 'ر',
+  type: 'review',
+  steps: (rng) => {
+    const connecting = ['ba', 'ta', 'tha', 'nun', 'ya'];
+    const yesNo = (id: string): Draft => ({
+      kind: 'choose',
+      prompt: 'Cette lettre s’attache-t-elle à la lettre qui la suit ?',
+      question: { ar: letter(id).char, sound: letterItem(id).sound },
+      options: [
+        { id: 'oui', text: 'Oui, des deux côtés' },
+        { id: 'non', text: 'Non, seulement à droite' },
+      ],
+      answerId: NON_CONNECTING.includes(id) ? 'non' : 'oui',
+      explain: 'ا د ذ ر ز و ne s’attachent jamais à la lettre suivante.',
+    });
+    const words = [...LESSON_WORDS.ra, ...LESSON_WORDS.dal, ...LESSON_WORDS.waw].map(wordItem);
+    const positions = shuffle(words, rng)
+      .map((w) => positionQuiz(w, ['ra', 'dal', 'waw'].find((id) => w.ar.includes(letter(id).char)) ?? 'ra'))
+      .filter((q): q is Draft => q !== null)
+      .slice(0, 3);
+    return [
+      {
+        kind: 'intro',
+        eyebrow: 'Révision',
+        title: 'Les six lettres qui ne s’attachent pas',
+        body: 'ا د ذ ر ز و s’attachent à la lettre **précédente**, jamais à la **suivante**. Après elles, le mot se « coupe » : la lettre suivante reprend sa forme de début.',
+        items: NON_CONNECTING.map(letterItem),
+        tips: ['نُورٌ : le ر suit un و, il s’écrit donc seul.'],
+      },
+      { kind: 'forms', title: 'Deux formes seulement', prompt: 'Elles n’ont qu’une forme seule et une forme finale.', letterIds: NON_CONNECTING },
+      ...shuffle([...sample(NON_CONNECTING, 3, rng), ...sample(connecting, 3, rng)], rng).map(yesNo),
+      ...positions,
+    ];
+  },
+});
+
+const MODULE_NON_CONNECTING: ModuleDraft = {
+  id: 'non-attachees',
+  index: 3,
+  title: 'Les lettres qui ne s’attachent pas',
+  titleAr: 'حُرُوفٌ لَا تَتَّصِلُ',
+  description: 'ر د و ز ذ : des lettres qui coupent le mot, et le son doux « aw ».',
+  lessons: [
+    letterStep('ra', 'Une lettre qui ne s’attache pas', {
+      notion: {
+        eyebrow: 'Notion',
+        title: 'Six lettres ne s’attachent pas',
+        body: 'Comme l’alif, le **râ’** s’attache à la lettre d’avant mais **jamais à la suivante**. Six lettres se comportent ainsi : ا د ذ ر ز و. Tu les découvres dans cette étape.',
+        items: NON_CONNECTING.map(letterItem),
+        tips: ['نَارٌ : ن s’attache à ا, mais ا et ر restent séparés.'],
+      },
+    }),
+    letterStep('dal', 'Ne s’attache pas non plus'),
+    letterStep('waw', 'Consonne, voyelle longue et « aw »', {
+      notion: {
+        eyebrow: 'Notion',
+        title: 'Le wâw, consonne ou voyelle',
+        body: 'Avec une voyelle, و est une **consonne** : وَ « wa ». Sans signe après une damma, il **allonge** le son : بُو « boû ». Avec un soukoun après une fatha, il forme le son doux **« aw »** : ثَوْ « thaw ».',
+        items: [vowelItem('waw', 'fatha'), maddItem('ba', 'damma'), textItem('ثَوْ', 'thaw')],
+      },
+    }),
+    letterStep('zay', 'ز = ر + un point'),
+    letterStep('dhal', 'ذ = د + un point'),
+    attachReview,
+  ],
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   Étape 4 — Les lettres fréquentes
+   ════════════════════════════════════════════════════════════════════════ */
+
+const shaddaLesson = wordsLesson({
+  id: 'chadda',
+  title: 'La chadda',
+  subtitle: 'Doubler une lettre',
+  glyph: 'بّ',
+  words: LESSON_WORDS.chadda,
+  intro: {
+    eyebrow: 'Nouveau signe',
+    body: 'La **chadda** ressemble à un petit « w ». Elle **double** la lettre : la première est au soukoun, la seconde porte la voyelle. رَبِّ = رَبْ + بِ « rabbi ».',
+    items: [textItem('رَبْ', 'rab'), textItem('بِ', 'bi'), textItem('رَبِّ', 'rabbi')],
+    tips: ['Appuie sur la lettre doublée, sans la répéter deux fois.', 'Le nûn et le mîm avec chadda (نّ مّ) se prononcent avec une nasalisation de deux temps : la ghunna.'],
+  },
+  extra: (rng) => {
+    const parts: [string, string, string][] = [
+      ['ثُمْ', 'مَ', 'ثُمَّ'],
+      ['مَدْ', 'دَ', 'مَدَّ'],
+      ['نَزْ', 'زَ', 'نَزَّ'],
+      ['ذَرْ', 'رَ', 'ذَرَّ'],
+    ];
+    const lines = parts.map((p) => p.map((t) => textItem(t)));
+    const doubled = ['ba', 'ta', 'dal', 'ra', 'nun', 'mim', 'lam'].map((id) =>
+      textItem(letter(id).char + MARKS.shadda + MARKS.fatha, `${letter(id).translit}${letter(id).translit}a`),
+    );
+    return [
+      repeat('Décomposer la chadda', lines, 'Écoute les deux morceaux, puis la syllabe doublée.'),
+      ...sample(doubled, 2, rng).map((it) => listen(it, doubled, rng, 3, 'Quelle lettre doublée as-tu entendue ?')),
+    ];
+  },
+  highlight: { prompt: 'Retrouve la chadda dans le Coran.', spec: { marks: [MARKS.shadda], label: 'la chadda' }, goal: 5 },
+});
+
+const taMarbutaLesson = wordsLesson({
+  id: 'ta-marbuta',
+  title: 'Le tâ’ marbûṭa ة',
+  subtitle: 'Un « t » qui ferme le mot',
+  glyph: 'ة',
+  words: LESSON_WORDS['ta-marbuta'],
+  intro: {
+    eyebrow: 'Notion',
+    body: 'Le **tâ’ marbûṭa** ة ressemble au hâ’ avec deux points. On le trouve **seulement à la fin** des mots. Il se lit **« t »** quand on enchaîne, et **« h »** quand on s’arrête dessus.',
+    items: [letterItem('ha'), textItem('ةَ', 'ta'), textItem('ةٌ', 'toun')],
+    tips: ['كَلِمَةٌ se lit « kalimatoun » ; à l’arrêt : « kalimah ».', 'Il ne s’attache jamais à une lettre suivante : il est toujours le dernier.'],
+  },
+  highlight: { prompt: 'Retrouve le tâ’ marbûṭa dans le Coran.', spec: { letters: ['ة'], label: 'le tâ’ marbûṭa' }, goal: 3 },
+});
+
+const MODULE_FREQUENT: ModuleDraft = {
+  id: 'frequentes',
+  index: 4,
+  title: 'Les lettres fréquentes',
+  titleAr: 'حُرُوفٌ كَثِيرَةٌ',
+  description: 'م ل ك ه س ش, la chadda et le tâ’ marbûṭa : de quoi lire de nombreux mots du Coran.',
+  lessons: [
+    letterStep('mim', 'Les lèvres fermées'),
+    letterStep('lam', 'Et la ligature لا', {
+      notion: {
+        eyebrow: 'Notion',
+        title: 'Lâm + alif = لا',
+        body: 'Quand le lâm est suivi d’un alif, les deux lettres s’écrivent ensemble d’un seul trait : **لا** « lâ ». Ce n’est pas une nouvelle lettre, seulement une façon de les lier.',
+        items: [letterItem('lam'), letterItem('alif'), textItem('لَا', 'lâ')],
+      },
+    }),
+    shaddaLesson,
+    letterStep('kaf', 'Un « k » léger'),
+    letterStep('ha', 'Un souffle léger'),
+    taMarbutaLesson,
+    letterStep('sin', 'Trois petites dents'),
+    letterStep('shin', 'Trois dents, trois points'),
+  ],
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   Étape 5 — La gorge et la hamza
+   ════════════════════════════════════════════════════════════════════════ */
+
+const hamzaLesson = wordsLesson({
+  id: 'hamza',
+  title: 'La hamza ء',
+  subtitle: 'Le coup de glotte et ses supports',
+  glyph: 'ء',
+  words: LESSON_WORDS.hamza,
+  intro: {
+    eyebrow: 'Notion',
+    body: 'La **hamza** est un coup de glotte. Elle s’écrit seule (ء) ou posée sur un support : l’alif (أ / إ), le wâw (ؤ) ou un yâ’ sans points (ئ). C’est elle qui porte la voyelle au début des mots : أَحَدٌ.',
+    items: [textItem('أَ', 'a'), textItem('إِ', 'i'), textItem('أُ', 'ou'), textItem('ؤ'), textItem('ئ')],
+  },
+  extra: () => [{ kind: 'letter', letterId: 'hamza' }],
+  highlight: { prompt: 'Retrouve la hamza dans le Coran.', spec: { letters: ['ء', 'أ', 'إ', 'ؤ', 'ئ'], label: 'la hamza' }, goal: 3 },
+});
+
+const alifMaqsuraLesson = wordsLesson({
+  id: 'alif-maqsura',
+  title: 'L’alif maqsûra ى',
+  subtitle: 'Un « â » final écrit avec un yâ’',
+  glyph: 'ى',
+  words: LESSON_WORDS['alif-maqsura'],
+  intro: {
+    eyebrow: 'Notion',
+    body: 'À la fin de certains mots, le son long **« â »** s’écrit avec un **yâ’ sans points** : ى. On l’appelle **alif maqsûra**. هُدًى « houdan », مُوسَى « moûsâ ».',
+    tips: ['Dans le Mushaf, il porte souvent un petit alif : مُوسَىٰ.'],
+  },
+  highlight: { prompt: 'Retrouve l’alif maqsûra dans le Coran.', spec: { letters: ['ى'], label: 'l’alif maqsûra' }, goal: 3 },
+});
+
+const MODULE_THROAT: ModuleDraft = {
+  id: 'gorge',
+  index: 5,
+  title: 'La gorge et la hamza',
+  titleAr: 'حُرُوفُ ٱلْحَلْقِ',
+  description: 'ق ج ح خ, la hamza et l’alif maqsûra.',
+  lessons: [
+    letterStep('qaf', 'Un « q » profond'),
+    letterStep('jim', 'Un « dj » doux'),
+    letterStep('hha', 'Un souffle de la gorge'),
+    letterStep('kha', 'Un « kh » râpeux'),
+    hamzaLesson,
+    alifMaqsuraLesson,
+  ],
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   Étape 6 — Le soleil et la lune
+   ════════════════════════════════════════════════════════════════════════ */
+
+const articleLesson = lesson({
+  id: 'article',
+  title: 'Le soleil et la lune',
+  subtitle: 'L’article « al » : lettres lunaires et solaires',
+  glyph: 'ٱلْ',
+  xp: 30,
+  steps: (rng) => {
+    const qamari = WORDS_QAMARI.map(wordItem);
+    const shamsi = WORDS_SHAMSI.map(wordItem);
+    const sort = (it: Item, solar: boolean): Draft => ({
+      kind: 'choose',
+      prompt: 'Lettre lunaire ou lettre solaire ?',
+      question: { ar: it.ar, sound: it.sound, caption: it.label },
+      options: [
+        { id: 'lune', text: 'Lunaire : on entend le ل' },
+        { id: 'soleil', text: 'Solaire : le ل disparaît' },
+      ],
+      answerId: solar ? 'soleil' : 'lune',
+      explain: solar ? 'Le ل ne se prononce pas : la lettre suivante porte une chadda.' : 'Le ل porte un soukoun et se prononce.',
+    });
+    return [
+      {
+        kind: 'intro',
+        eyebrow: 'L’article',
+        title: 'ٱلْ : « le, la, les »',
+        body: 'L’article **ٱلْ** se place devant un nom. Si la première lettre du nom est **lunaire** (قَمَرِيَّة), on entend le ل : ٱلْقَمَرُ « al-qamarou ». Si elle est **solaire** (شَمْسِيَّة), le ل ne se prononce plus : il se transforme en la lettre suivante, qui porte alors une **chadda** : ٱلشَّمْسُ « ash-shamsou ».',
+        items: [qamari[0], shamsi[0]],
+        tips: ['Le ب est donc lunaire : ٱلْبَيْتِ', 'Le ت est solaire : ٱلتِّينِ', 'Le petit signe sur l’alif (ٱ) indique un alif de liaison, que tu étudieras bientôt.'],
+      },
+      discover('Lettres lunaires : le ل se prononce', qamari),
+      discover('Lettres solaires : le ل disparaît', shamsi),
+      repeat('Lune ou soleil', chunk(shuffle([...qamari.slice(0, 3), ...shamsi.slice(0, 3)], rng), 3)),
+      ...shuffle([...sample(qamari, 3, rng).map((it) => sort(it, false)), ...sample(shamsi, 3, rng).map((it) => sort(it, true))], rng),
+      ...sample([...qamari, ...shamsi], 2, rng).map((it) => listen(it, [...qamari, ...shamsi], rng, 4, 'Quel mot as-tu entendu ?')),
+      mushaf('Retrouve le lâm solaire, écrit mais non prononcé.', { rules: ['laam_shamsiyah'], label: 'le lâm solaire' }, 3),
+    ];
+  },
+});
+
+const waslLesson = wordsLesson({
+  id: 'wasl',
+  title: 'L’alif de liaison ٱ',
+  subtitle: 'Prononcé au début, muet en liaison',
+  glyph: 'ٱ',
+  words: LESSON_WORDS.wasl,
+  intro: {
+    eyebrow: 'Notion',
+    body: 'L’alif surmonté d’un petit ṣâd (**ٱ**) est un **alif de liaison**. On le prononce seulement quand on **commence** la lecture par lui. Au milieu d’une phrase, il **disparaît** : on lie directement les mots. بِسْمِ ٱللَّهِ se lit « bismi-llâhi ».',
+    tips: ['Sa voyelle de départ peut être « a » (ٱلْكِتَابُ), « i » (ٱقْرَأْ) ou « ou » selon le mot.'],
+  },
+  highlight: { prompt: 'Retrouve les alifs de liaison muets (ٱ en milieu de phrase).', spec: { rules: ['ham_wasl'], label: 'l’alif de liaison' }, goal: 3 },
+});
 
 const MODULE_ARTICLE: ModuleDraft = {
-  id: 'article',
-  index: 8,
-  title: 'L’article « al »',
-  titleAr: 'ٱللَّامُ ٱلْقَمَرِيَّةُ وَٱلشَّمْسِيَّةُ',
-  description: 'Lettres lunaires et solaires, et l’alif de liaison ٱ du Mushaf.',
+  id: 'soleil-lune',
+  index: 6,
+  title: 'Le soleil et la lune',
+  titleAr: 'ٱلشَّمْسُ وَٱلْقَمَرُ',
+  description: 'L’article, les lettres lunaires et solaires, le fâ’ et l’alif de liaison.',
   lessons: [
-    wordsLesson({
-      id: 'lam-qamari',
-      title: 'Le lâm lunaire',
-      subtitle: 'ٱلْقَمَرُ : le lâm se prononce',
-      glyph: 'ٱلْقَ',
-      words: WORDS_QAMARI,
-      intro: 'Devant les 14 lettres lunaires (ا ب ج ح خ ع غ ف ق ك م و ه ي), le lâm de l’article porte un soukoun et se prononce : ٱلْقَمَرُ « al-qamarou ».',
-      highlight: { prompt: 'Repère l’alif de liaison ٱ qui ouvre l’article.', spec: { letters: ['ٱ'], label: 'l’alif de liaison' }, goal: 4 },
+    articleLesson,
+    letterStep('fa', 'Un point au-dessus de la boucle', {
+      notion: {
+        eyebrow: 'Astuce',
+        title: 'Le fâ’ et le qâf',
+        body: 'Le **fâ’** ressemble au qâf : le fâ’ a **un point**, le qâf en a **deux**. Remarque aussi que dans فِي, le ف peut s’écrire au-dessus du ي dans certaines écritures.',
+        items: [letterItem('fa'), letterItem('qaf')],
+      },
     }),
-    wordsLesson({
-      id: 'lam-shamsi',
-      title: 'Le lâm solaire',
-      subtitle: 'ٱلشَّمْسُ : le lâm disparaît',
-      glyph: 'ٱلشَّ',
-      words: WORDS_SHAMSI,
-      intro: 'Devant les 14 lettres solaires (ت ث د ذ ر ز س ش ص ض ط ظ ل ن), le lâm s’écrit mais ne se prononce pas : la lettre suivante prend une chadda. ٱلشَّمْسُ « ash-shamsou ».',
-      highlight: { prompt: 'Retrouve le lâm solaire (non prononcé) dans le Coran.', spec: { rules: ['laam_shamsiyah'], label: 'le lâm solaire' }, goal: 3 },
-    }),
-    wordsLesson({
-      id: 'hamzat-wasl',
-      title: 'L’alif de liaison',
-      subtitle: 'ٱ : prononcé au début, muet en liaison',
-      glyph: 'ٱ',
-      words: WORDS_WASL,
-      intro: 'L’alif surmonté d’un petit ṣâd (ٱ) se prononce seulement en début de lecture. En liaison, il disparaît : بِسْمِ ٱللَّهِ se lit « bismi-llâhi ».',
-      highlight: { prompt: 'Retrouve les alifs de liaison muets (ٱ en milieu de phrase).', spec: { rules: ['ham_wasl'], label: 'la hamzat al-wasl' }, goal: 3 },
-    }),
+    waslLesson,
   ],
 };
 
 /* ════════════════════════════════════════════════════════════════════════
-   Étape 9 — Vers le Mushaf
+   Étape 7 — Les dernières lettres
    ════════════════════════════════════════════════════════════════════════ */
+
+const HEAVY = ['kha', 'sad', 'dad', 'taa', 'dhaa', 'ghayn', 'qaf'];
+
+const heavyLesson = lesson({
+  id: 'epaisses',
+  title: 'Les lettres épaisses',
+  subtitle: 'Le tafkhîm',
+  glyph: 'قَ',
+  type: 'review',
+  steps: (rng) => {
+    const lines = HEAVY.map((id) => VOWEL_IDS.map((v) => vowelRow([id], v)[0]));
+    const pairs = [
+      ['ta', 'taa'],
+      ['sin', 'sad'],
+      ['dal', 'dad'],
+      ['kaf', 'qaf'],
+      ['dhal', 'dhaa'],
+    ].map(([a, b]) => [vowelRow([a], 'fatha')[0], vowelRow([b], 'fatha')[0]]);
+    return [
+      {
+        kind: 'intro',
+        eyebrow: 'Tajweed',
+        title: 'Les 7 lettres épaisses',
+        body: 'خ ص ض ط ظ غ ق sont toujours **épaisses** : le fond de la langue se relève et le son devient plein, presque « o ». Leurs voisines légères restent fines.',
+        items: HEAVY.map(letterItem),
+        tips: ['Formule à retenir : خُصَّ ضَغْطٍ قِظْ', 'تَ (léger) ≠ طَ (épais) · سَ ≠ صَ · دَ ≠ ضَ'],
+      },
+      repeat('Léger ou épais ?', pairs),
+      repeat('Les lettres épaisses avec les voyelles', lines),
+      ...shuffle(pairs, rng).map((p) => listen(p[Math.floor(rng() * 2)], p, rng, 2, 'Léger ou épais ?')),
+      mushaf('Retrouve les lettres épaisses dans le Coran.', { rules: ['tafkhim'], label: 'l’emphase' }, 4),
+    ];
+  },
+});
+
+const qalqalaLesson = lesson({
+  id: 'qalqala',
+  title: 'La qalqala',
+  subtitle: 'Le rebond de قطب جد',
+  glyph: 'قْ',
+  steps: (rng) => {
+    const ids = ['qaf', 'taa', 'ba', 'jim', 'dal'];
+    const row = ids.map((id) => sukunItem(id, 'fatha'));
+    const lines = ids.map((id) => VOWEL_IDS.map((v) => sukunItem(id, v)));
+    return [
+      {
+        kind: 'intro',
+        eyebrow: 'Tajweed',
+        title: 'La qalqala قَلْقَلَة',
+        body: 'Cinq lettres — ق ط ب ج د (« qoṭbou jad ») — produisent un léger **rebond** sonore lorsqu’elles portent un soukoun. Écoute : أَقْ, أَطْ, أَبْ.',
+        items: row,
+        tips: ['Le rebond est plus fort en fin de verset, à l’arrêt.'],
+      },
+      repeat('Écoute le rebond', lines),
+      ...sample(row, 3, rng).map((it) => listen(it, row, rng)),
+      mushaf('Retrouve la qalqala dans le Coran.', { rules: ['qalaqah'], label: 'la qalqala' }, 3),
+    ];
+  },
+});
+
+const MODULE_LAST: ModuleDraft = {
+  id: 'dernieres',
+  index: 7,
+  title: 'Les dernières lettres',
+  titleAr: 'آخِرُ ٱلْحُرُوفِ',
+  description: 'ع غ ص ض ط ظ, les lettres épaisses et la qalqala.',
+  lessons: [
+    letterStep('ayn', 'Le son de la gorge resserrée'),
+    letterStep('ghayn', 'ع + un point'),
+    letterStep('sad', 'Un « s » épais'),
+    letterStep('dad', 'ص + un point'),
+    letterStep('taa', 'Un « t » épais'),
+    letterStep('dhaa', 'ط + un point'),
+    heavyLesson,
+    qalqalaLesson,
+  ],
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   Étape 8 — Lire le Mushaf
+   ════════════════════════════════════════════════════════════════════════ */
+
+const smallLettersLesson = wordsLesson({
+  id: 'petites-lettres',
+  title: 'Les petites lettres du Mushaf',
+  subtitle: 'ـٰ ۥ ۦ : l’alif suscrit',
+  glyph: 'مَٰ',
+  words: LESSON_WORDS['petites-lettres'],
+  intro: {
+    eyebrow: 'Écriture du Mushaf',
+    body: 'Dans le Mushaf, certaines voyelles longues s’écrivent avec une **petite lettre** : l’alif suscrit (ـٰ) se lit « â », le petit wâw (ۥ) « oû » et le petit yâ’ (ۦ) « î ». مَٰلِكِ se lit « mâliki ».',
+  },
+  highlight: {
+    prompt: 'Retrouve l’alif suscrit et les petites lettres dans le Coran.',
+    spec: { marks: [MARKS.daggerAlif, MARKS.smallWaw, MARKS.smallYa], label: 'les petites lettres' },
+    goal: 3,
+  },
+});
+
+const sentencesLesson = lesson({
+  id: 'phrases',
+  title: 'Lire des phrases',
+  subtitle: 'Toutes les notions réunies',
+  glyph: 'قَرَأَ',
+  xp: 30,
+  steps: (rng) => {
+    const sentences = SENTENCES.map((s) => ({ fr: s.fr, items: s.words.map(wordItem) }));
+    const all = sentences.flatMap((s) => s.items);
+    return [
+      {
+        kind: 'intro',
+        eyebrow: 'Lecture suivie',
+        title: 'Tu sais lire !',
+        body: 'Tu connais toutes les lettres et tous les signes. Lis maintenant des phrases entières, mot après mot. Attention aux **liaisons** : l’alif de liaison ٱ ne se prononce pas au milieu d’une phrase.',
+        tips: ['إِلَى ٱلْمَدْرَسَةِ se lit « ilal-madrasati ».'],
+      },
+      ...sentences.map((s, i) => repeat(`Phrase ${i + 1}`, [s.items], `« ${s.fr} » Lance la lecture guidée, puis relis la phrase seul.`)),
+      ...sample(all, 3, rng).map((it) => listen(it, all, rng, 4, 'Quel mot as-tu entendu ?')),
+      match(sample(all, 4, rng), rng, 'Associe chaque mot à sa lecture'),
+    ];
+  },
+});
 
 function surahLesson(opts: {
   id: string;
@@ -918,11 +872,13 @@ const tajweedColors = lesson({
 
 const MODULE_QURAN: ModuleDraft = {
   id: 'mushaf',
-  index: 9,
-  title: 'Vers le Mushaf',
-  titleAr: 'نَحْوَ ٱلْمُصْحَفِ',
-  description: 'Lire tes premières sourates mot à mot, avec le code couleur du Tajweed.',
+  index: 8,
+  title: 'Lire le Mushaf',
+  titleAr: 'نَقْرَأُ ٱلْمُصْحَفَ',
+  description: 'Les petites lettres du Mushaf, la lecture suivie, puis tes premières sourates mot à mot.',
   lessons: [
+    smallLettersLesson,
+    sentencesLesson,
     surahLesson({
       id: 'fatiha-1',
       title: 'Al-Fâtiha (1)',
@@ -985,14 +941,13 @@ const MODULE_QURAN: ModuleDraft = {
 /* ════════════════════════════════════════════════════════════════════════ */
 
 const DRAFTS: ModuleDraft[] = [
-  MODULE_LETTERS,
-  MODULE_VOWELS,
-  MODULE_SUKUN,
-  MODULE_CONNECTED,
-  MODULE_MADD,
-  MODULE_TANWIN,
-  MODULE_SHADDA,
+  MODULE_SYSTEM,
+  MODULE_BA,
+  MODULE_NON_CONNECTING,
+  MODULE_FREQUENT,
+  MODULE_THROAT,
   MODULE_ARTICLE,
+  MODULE_LAST,
   MODULE_QURAN,
 ];
 

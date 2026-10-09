@@ -9,3 +9,7 @@ Déposez ici les enregistrements (mp3, ogg, opus, m4a, aac, wav, webm) :
 
 `npm run audio:list` écrit la liste complète des sons attendus dans `docs/audio-attendus.txt`.
 Après ajout, lancez `npm run audio:manifest` (automatique avec `npm run dev` / `npm run build`).
+
+Les enregistrements actuels des lettres, syllabes (fatha, kasra, damma) et mots-clés
+proviennent de https://github.com/bubblesinarabic/alphabets-audio (sans licence
+précisée : voir la section « Données, polices et licences » du README principal).

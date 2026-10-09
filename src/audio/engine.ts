@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import { useSettings } from '@/store/settings';
 import { unlockAudio } from './context';
 import { AUDIO_BASE_URL, type Sound } from './sounds';
+import { listRecordings, stemOf } from './studio';
 
 /**
  * Sources audio : uniquement des voix humaines.
- *   - `file`   : enregistrement déposé dans public/audio ;
+ *   - `file`   : enregistrement du Studio (sur cet appareil) ou déposé dans public/audio ;
  *   - `remote` : récitation mot-à-mot de Quran.com (mots du Coran) ;
  *   - `silent` : aucun enregistrement — seule l’animation est jouée.
  * Aucune voix de synthèse n’est utilisée : une prononciation approximative
@@ -37,11 +38,14 @@ export function useIsPlaying(id: string | undefined): boolean {
   return useAudioState((s) => !!id && s.playingId === id);
 }
 
-const stem = (path: string) => path.replace(/\.[a-z0-9]+$/i, '');
+const stem = stemOf;
 
 class AudioEngine {
   private manifest: Map<string, string> | null = null;
   private manifestPromise: Promise<Map<string, string>> | null = null;
+  /** Enregistrements du Studio : chemin sans extension → URL locale. */
+  private studio = new Map<string, string>();
+  private studioPromise: Promise<void> | null = null;
   private pool = new Map<string, HTMLAudioElement>();
   private current: HTMLAudioElement | null = null;
   private token = 0;
@@ -55,13 +59,28 @@ class AudioEngine {
    * place du « .mp3 » attendu est reconnu automatiquement.
    */
   loadManifest(): Promise<Map<string, string>> {
-    if (this.manifest) return Promise.resolve(this.manifest);
+    this.studioPromise ??= this.reloadStudio();
+    if (this.manifest) return this.studioPromise.then(() => this.manifest!);
     this.manifestPromise ??= fetch(`${AUDIO_BASE_URL}manifest.json`, { cache: 'no-cache' })
       .then((r) => (r.ok ? r.json() : { files: [] }))
       .then((data: { files?: string[] }) => new Map((data.files ?? []).map((f) => [stem(f), f])))
       .catch(() => new Map<string, string>())
       .then((map) => (this.manifest = map));
-    return this.manifestPromise;
+    return Promise.all([this.manifestPromise, this.studioPromise]).then(([m]) => m);
+  }
+
+  /** Recharge les enregistrements du Studio (après un ajout ou une suppression). */
+  async reloadStudio(): Promise<void> {
+    const recs = await listRecordings();
+    this.studio.forEach((url) => URL.revokeObjectURL(url));
+    this.studio = new Map(recs.map((r) => [r.stem, URL.createObjectURL(r.blob)]));
+    this.pool.clear();
+    this.failedUrls.clear();
+  }
+
+  /** URL d’un enregistrement du Studio pour `src`, s’il existe sur cet appareil. */
+  studioUrl(src: string): string | null {
+    return this.studio.get(stem(src)) ?? null;
   }
 
   /** Nombre d’enregistrements installés (profil). */
@@ -122,6 +141,8 @@ class AudioEngine {
     if (token !== this.token) return;
 
     const urls: { url: string; source: 'file' | 'remote' }[] = [];
+    const own = this.studioUrl(sound.src);
+    if (own) urls.push({ url: own, source: 'file' });
     const file = this.resolveFile(sound.src);
     if (file) urls.push({ url: AUDIO_BASE_URL + file, source: 'file' });
     if (sound.remote && settings.remoteQuranAudio && !this.failedUrls.has(sound.remote)) {

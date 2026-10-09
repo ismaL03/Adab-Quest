@@ -1,18 +1,22 @@
 import { createRng, hashString, sample, shuffle } from '@/lib/random';
-import { contextualForm, type LetterPosition } from '@/lib/arabic';
+import { contextualForm, graphemes, MARKS, NON_CONNECTORS, TATWEEL, type LetterPosition } from '@/lib/arabic';
 import { letter, LETTERS, SHAPE_FAMILIES, SOUND_PAIRS } from '@/data/letters';
 import type { HighlightSpec } from '@/features/mushaf/highlight';
 import type { Passage } from '@/features/mushaf/passage';
 import {
   letterItem,
+  maddItem,
   syllableItems,
+  tanwinItem,
   textItem,
+  vowelItem,
   VOWELS,
+  VOWEL_IDS,
   wordItem,
   type VowelId,
   type WordEntry,
 } from './items';
-import type { ChoiceOption, Item, Lesson, MushafStep, Step } from './types';
+import type { ChoiceOption, IntroStep, Item, Lesson, MushafStep, Step } from './types';
 
 /** Étape sans identifiant : l’identifiant est attribué par `lesson()`. */
 export type Draft = Step extends infer S ? (S extends Step ? Omit<S, 'id'> : never) : never;
@@ -57,12 +61,6 @@ export function confusables(letterId: string): string[] {
   }
   out.delete(letterId);
   return [...out];
-}
-
-/** Lettres déjà vues avant (et y compris) cette liste, dans l’ordre de l’alphabet. */
-export function lettersUpTo(lastId: string): string[] {
-  const idx = LETTERS.findIndex((l) => l.id === lastId);
-  return LETTERS.slice(0, idx + 1).map((l) => l.id);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -166,50 +164,6 @@ export function chunk<T>(items: T[], size: number): T[][] {
    Modèles de leçons réutilisables
    ────────────────────────────────────────────────────────────────────────── */
 
-/** Leçon d’introduction de nouvelles lettres isolées. */
-export function letterGroupLesson(opts: { id: string; letterIds: string[]; title: string; subtitle: string }): LessonDraft {
-  const { letterIds } = opts;
-  return lesson({
-    id: opts.id,
-    title: opts.title,
-    subtitle: opts.subtitle,
-    glyph: letter(letterIds[letterIds.length > 1 ? 1 : 0]).char,
-    steps: (rng) => {
-      const items = letterIds.map(letterItem);
-      const known = lettersUpTo(letterIds[letterIds.length - 1]);
-      const poolIds = [...new Set([...letterIds, ...letterIds.flatMap(confusables), ...sample(known, 4, rng)])];
-      const pool = poolIds.map(letterItem);
-      const steps: Draft[] = [
-        {
-          kind: 'intro',
-          eyebrow: 'Nouvelles lettres',
-          title: opts.title,
-          body: 'Observe chaque lettre, écoute son nom, puis apprends à la reconnaître à l’oreille et à l’œil. Touche une lettre pour l’entendre.',
-          items,
-        },
-        ...letterIds.map((letterId): Draft => ({ kind: 'letter', letterId })),
-        discover('Écoute les lettres', items, 'Touche chaque lettre pour l’entendre au moins une fois.'),
-        ...shuffle(items, rng).map((it) => listen(it, pool, rng)),
-        ...sample(items, Math.min(2, items.length), rng).map((it) =>
-          readChoice(it, pool, rng, { prompt: 'Quel est le nom de cette lettre ?' }),
-        ),
-        match(items, rng, 'Associe chaque lettre à son nom'),
-        mushaf(
-          'Retrouve ces lettres dans le Coran : touche les mots qui les contiennent.',
-          { letters: letterIds.filter((id) => id !== 'alif').map((id) => letter(id).char), label: 'les lettres de la leçon' },
-          3,
-          {
-            filters: letterIds
-              .filter((id) => id !== 'alif')
-              .map((id) => ({ label: letter(id).char, highlight: { letters: [letter(id).char], label: `la lettre ${letter(id).name}` } })),
-          },
-        ),
-      ];
-      return steps;
-    },
-  });
-}
-
 /** Syllabes « lettre + voyelle » pour une liste de lettres. */
 export function vowelRow(letterIds: string[], vowel: VowelId): Item[] {
   return letterIds.map((id) => {
@@ -238,4 +192,157 @@ export function formItems(letterId: string): Item[] {
     ar: contextualForm(l.char, p),
     label: `${l.name} · ${labels[p]}`,
   }));
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Position d’une lettre dans un mot (début, milieu, fin, seule)
+   ────────────────────────────────────────────────────────────────────────── */
+
+const POSITION_LABELS: Record<LetterPosition, string> = {
+  isolated: 'Seule',
+  initial: 'Au début',
+  medial: 'Au milieu',
+  final: 'À la fin',
+};
+
+/**
+ * Forme prise par `char` dans `word` (s’il y apparaît une seule fois) :
+ * elle dépend de ses voisines, car six lettres ne se lient jamais à la suivante.
+ */
+export function letterPosition(word: string, char: string): LetterPosition | null {
+  const bases = graphemes(word)
+    .map((g) => g.base)
+    .filter((b) => b !== ' ' && b !== TATWEEL);
+  const hits = bases.flatMap((b, i) => (b === char ? [i] : []));
+  if (hits.length !== 1) return null;
+  const i = hits[0];
+  const joinsPrev = i > 0 && !NON_CONNECTORS.has(bases[i - 1]) && char !== 'ء';
+  const joinsNext = i < bases.length - 1 && !NON_CONNECTORS.has(char);
+  if (joinsPrev && joinsNext) return 'medial';
+  if (joinsPrev) return 'final';
+  if (joinsNext) return 'initial';
+  return 'isolated';
+}
+
+/** Exercice : « Où se trouve la lettre dans ce mot ? » */
+export function positionQuiz(word: Item, letterId: string): Draft | null {
+  const l = letter(letterId);
+  const pos = letterPosition(word.ar, l.char);
+  if (!pos) return null;
+  return {
+    kind: 'choose',
+    prompt: `Où se trouve la lettre ${l.char} dans ce mot ?`,
+    question: { ar: word.ar, sound: word.sound, caption: word.label },
+    options: (Object.keys(POSITION_LABELS) as LetterPosition[]).map((p) => ({ id: p, text: POSITION_LABELS[p] })),
+    answerId: pos,
+    explain: `Dans ${word.ar}, le ${l.name} est ${POSITION_LABELS[pos].toLowerCase()} : il s’écrit ${contextualForm(l.char, pos)}.`,
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Leçon « une lettre » (structure d’une leçon du livre)
+   ────────────────────────────────────────────────────────────────────────── */
+
+/** La lettre avec chaque voyelle courte, le soukoun et (si étudié) le tanwîn. */
+export function letterVowelItems(letterId: string, { tanwin = false } = {}): Item[] {
+  const l = letter(letterId);
+  const items = VOWEL_IDS.map((v) => vowelItem(letterId, v));
+  items.push(textItem(l.char + MARKS.sukun, l.translit));
+  if (tanwin) items.push(...VOWEL_IDS.map((v) => tanwinItem(letterId, v)));
+  return items;
+}
+
+/** Paires « voyelle courte / voyelle longue » : بَ بَا · بِ بِي · بُ بُو */
+export function shortLongLines(letterId: string): Item[][] {
+  return VOWEL_IDS.map((v) => [vowelItem(letterId, v), maddItem(letterId, v)]);
+}
+
+export interface LetterLessonInput {
+  id: string;
+  letterId: string;
+  subtitle: string;
+  /** Lettres déjà étudiées (distracteurs des exercices d’écoute). */
+  known: string[];
+  words: WordEntry[];
+  keyword?: WordEntry;
+  /** Le tanwîn a déjà été étudié : il rejoint la ligne des voyelles. */
+  tanwin?: boolean;
+  /** Notion qui se glisse dans la leçon (lettres non attachées, lîn…). */
+  notion?: Omit<IntroStep, 'kind' | 'id'>;
+  passage?: Passage;
+}
+
+/**
+ * Une leçon par lettre, comme dans « Ata‘allamu al-‘arabiyya » :
+ * la lettre et son mot-clé → la lettre avec les voyelles → les voyelles
+ * longues → des mots qui n’utilisent que des lettres connues → sa forme
+ * selon sa place dans le mot → la retrouver dans le Mushaf.
+ */
+export function letterLesson(input: LetterLessonInput): LessonDraft {
+  const l = letter(input.letterId);
+  return lesson({
+    id: input.id,
+    title: `${l.name} ${l.char}`,
+    subtitle: input.subtitle,
+    glyph: l.char,
+    xp: 25,
+    steps: (rng) => {
+      const row = letterVowelItems(l.id, { tanwin: input.tanwin });
+      const lines = shortLongLines(l.id);
+      const syllables = [...row, ...lines.map((p) => p[1])];
+      const words = input.words.map(wordItem);
+      const others = input.known.filter((id) => id !== l.id && id !== 'alif');
+      const near = [...confusables(l.id).filter((id) => others.includes(id)), ...shuffle(others, rng)];
+      const letterPool = [...new Set(near)].slice(0, 3).map((id) => vowelItem(id, 'fatha'));
+
+      const steps: Draft[] = [{ kind: 'letter', letterId: l.id, keyword: input.keyword && keywordItem(input.keyword) }];
+      if (input.notion) steps.push({ kind: 'intro', ...input.notion });
+      steps.push(
+        discover(`${l.name} et ses voyelles`, row, 'Touche chaque syllabe : la voyelle change le son de la lettre.'),
+        repeat('Court ou long ?', lines, 'Écoute la voyelle courte puis la voyelle longue, et répète.'),
+        ...sample(syllables, 2, rng).map((it) => listen(it, syllables, rng, 4, 'Quel son as-tu entendu ?')),
+      );
+      if (letterPool.length) {
+        const target = vowelItem(l.id, 'fatha');
+        steps.push(listen(target, [target, ...letterPool], rng, Math.min(4, letterPool.length + 1), 'Quelle lettre as-tu entendue ?'));
+      }
+      steps.push(readChoice(sample(syllables, 1, rng)[0], syllables, rng));
+
+      steps.push(
+        discover('Lis tes premiers mots', words, 'Ces mots n’utilisent que des lettres que tu connais. Touche-les pour les écouter.'),
+      );
+      if (words.length > 1) steps.push(repeat('Lecture guidée', chunk(words, 3)));
+      const buildable = input.words.filter((w) => syllableItems(w.ar).length >= 2);
+      const syllablePool = input.words.flatMap((w) => syllableItems(w.ar));
+      steps.push(...sample(buildable, Math.min(2, buildable.length), rng).map((w) => build(w, rng, syllablePool)));
+      if (words.length >= 3) steps.push(...sample(words, 2, rng).map((it) => listen(it, words, rng, 4, 'Quel mot as-tu entendu ?')));
+
+      // Sa forme dans le mot : une question par position différente.
+      const byPos = new Map<LetterPosition, Draft>();
+      for (const word of shuffle(words, rng)) {
+        const pos = letterPosition(word.ar, l.char);
+        const quiz = positionQuiz(word, l.id);
+        if (pos && quiz && !byPos.has(pos)) byPos.set(pos, quiz);
+      }
+      steps.push(...[...byPos.values()].slice(0, 2));
+      if (words.length >= 3) steps.push(match(words, rng, 'Associe chaque mot à sa lecture'));
+
+      if (l.id !== 'alif') {
+        steps.push(
+          mushaf(
+            `Retrouve la lettre ${l.char} dans le Coran : touche les mots qui la contiennent.`,
+            { letters: [l.char], label: `la lettre ${l.name}` },
+            3,
+            { passage: input.passage },
+          ),
+        );
+      }
+      return steps;
+    },
+  });
+}
+
+/** Mot-clé : un mot illustré, identifié à part pour ne pas compter comme un mot de lecture. */
+export function keywordItem(entry: WordEntry): Item {
+  return { ...wordItem(entry), id: `keyword:${entry.slug}` };
 }
