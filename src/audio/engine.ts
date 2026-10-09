@@ -1,10 +1,20 @@
 import { create } from 'zustand';
 import { useSettings } from '@/store/settings';
-import { getAudioContext, unlockAudio } from './context';
+import { unlockAudio } from './context';
 import { AUDIO_BASE_URL, type Sound } from './sounds';
-import { toSpeechText } from './speechText';
 
-export type AudioSource = 'file' | 'pack' | 'remote' | 'speech' | 'silent';
+/**
+ * Sources audio : uniquement des voix humaines.
+ *   - `file`   : enregistrement déposé dans public/audio ;
+ *   - `remote` : récitation mot-à-mot de Quran.com (mots du Coran) ;
+ *   - `silent` : aucun enregistrement — seule l’animation est jouée.
+ * Aucune voix de synthèse n’est utilisée : une prononciation approximative
+ * ferait plus de mal que de bien à un apprenant.
+ */
+export type AudioSource = 'file' | 'remote' | 'silent';
+
+/** Pourquoi un élément est resté silencieux (avertissement affiché une fois). */
+export type MissingKind = 'recording' | 'online';
 
 /** État observable de la lecture (pour synchroniser les animations). */
 interface AudioState {
@@ -13,8 +23,7 @@ interface AudioState {
   source: AudioSource | null;
   /** Source du dernier son joué (conservée après la fin de la lecture). */
   lastSource: AudioSource | null;
-  /** Avertissement affiché une seule fois : aucun son disponible pour un élément. */
-  missingNotice: { kind: 'file' | 'voice'; src: string } | null;
+  missingNotice: { kind: MissingKind; src: string } | null;
 }
 
 export const useAudioState = create<AudioState>(() => ({
@@ -28,54 +37,20 @@ export function useIsPlaying(id: string | undefined): boolean {
   return useAudioState((s) => !!id && s.playingId === id);
 }
 
-/** Index des paquets audio intégrés (public/audio/packs/index.json). */
-interface PackIndex {
-  voice?: string;
-  packs: { id: string; file: string; duration: number }[];
-  /** chemin sans extension → [n° de paquet, début (s), durée (s)] */
-  clips: Record<string, [number, number, number]>;
-}
-
 const stem = (path: string) => path.replace(/\.[a-z0-9]+$/i, '');
-/** Nombre de paquets décodés gardés en mémoire (un paquet ≈ 1 min de son). */
-const MAX_DECODED = 8;
 
 class AudioEngine {
   private manifest: Map<string, string> | null = null;
   private manifestPromise: Promise<Map<string, string>> | null = null;
-  private index: PackIndex | null = null;
-  private indexPromise: Promise<PackIndex> | null = null;
-  private buffers = new Map<number, Promise<AudioBuffer>>();
   private pool = new Map<string, HTMLAudioElement>();
   private current: HTMLAudioElement | null = null;
-  private currentNode: AudioBufferSourceNode | null = null;
   private token = 0;
   private resolveCurrent: (() => void) | null = null;
-  private voice: SpeechSynthesisVoice | null = null;
   private failedUrls = new Set<string>();
-  private noticeShown = false;
-
-  constructor() {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      this.pickVoice();
-      window.speechSynthesis.addEventListener?.('voiceschanged', () => this.pickVoice());
-    }
-  }
-
-  /** Choisit la meilleure voix arabe installée (les voix se chargent de façon asynchrone). */
-  private pickVoice() {
-    const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('ar'));
-    this.voice =
-      voices.find((v) => /sa|eg/i.test(v.lang) && /google|natural|neural|premium/i.test(v.name)) ??
-      voices.find((v) => /google|natural|neural|premium/i.test(v.name)) ??
-      voices[0] ??
-      null;
-  }
-
-  /* ── Inventaire des sons disponibles ─────────────────────────────────── */
+  private noticesShown = new Set<MissingKind>();
 
   /**
-   * Enregistrements individuels déposés dans /public/audio (liste générée par
+   * Enregistrements déposés dans /public/audio (liste générée par
    * `npm run audio:manifest`), indexés sans extension : un « .ogg » déposé à la
    * place du « .mp3 » attendu est reconnu automatiquement.
    */
@@ -89,59 +64,14 @@ class AudioEngine {
     return this.manifestPromise;
   }
 
-  /** Index des sons intégrés (paquets générés par `npm run audio:tts`). */
-  loadIndex(): Promise<PackIndex> {
-    if (this.index) return Promise.resolve(this.index);
-    this.indexPromise ??= fetch(`${AUDIO_BASE_URL}packs/index.json`)
-      .then((r) => (r.ok ? r.json() : { packs: [], clips: {} }))
-      .catch(() => ({ packs: [], clips: {} }))
-      .then((idx: PackIndex) => (this.index = idx));
-    return this.indexPromise;
-  }
-
-  private ready() {
-    return Promise.all([this.loadManifest(), this.loadIndex()]);
-  }
-
-  /** Statistiques affichées dans le profil. */
-  async stats(): Promise<{ files: number; bundled: number }> {
-    const [manifest, index] = await this.ready();
-    return { files: manifest.size, bundled: Object.keys(index.clips).length };
+  /** Nombre d’enregistrements installés (profil). */
+  async recordingsCount(): Promise<number> {
+    return (await this.loadManifest()).size;
   }
 
   /** Chemin réel du fichier local correspondant à `src`, ou null s’il est absent. */
   resolveFile(src: string): string | null {
     return this.manifest?.get(stem(src)) ?? null;
-  }
-
-  private resolveClip(src: string) {
-    const clip = this.index?.clips[stem(src)];
-    return clip ? { pack: clip[0], start: clip[1], duration: clip[2] } : null;
-  }
-
-  /** Télécharge et décode un paquet (mis en cache, dédupliqué). */
-  private loadPack(n: number): Promise<AudioBuffer> {
-    const cached = this.buffers.get(n);
-    if (cached) {
-      // Rafraîchit l’ordre LRU.
-      this.buffers.delete(n);
-      this.buffers.set(n, cached);
-      return cached;
-    }
-    const ac = getAudioContext();
-    const pack = this.index?.packs[n];
-    if (!ac || !pack) return Promise.reject(new Error('Web Audio indisponible'));
-    const promise = fetch(AUDIO_BASE_URL + pack.file)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.arrayBuffer();
-      })
-      // Forme « callback » : compatible avec les anciens Safari.
-      .then((data) => new Promise<AudioBuffer>((resolve, reject) => ac.decodeAudioData(data, resolve, reject)));
-    promise.catch(() => this.buffers.delete(n));
-    this.buffers.set(n, promise);
-    while (this.buffers.size > MAX_DECODED) this.buffers.delete(this.buffers.keys().next().value!);
-    return promise;
   }
 
   private element(url: string): HTMLAudioElement {
@@ -155,22 +85,14 @@ class AudioEngine {
     return el;
   }
 
-  /** Précharge les sons d’une étape pour une lecture instantanée au clic. */
+  /** Précharge les enregistrements d’une étape pour une lecture instantanée au clic. */
   async preload(list: readonly Sound[]): Promise<void> {
-    await this.ready();
-    const packs = new Set<number>();
+    await this.loadManifest();
     for (const s of list) {
       const file = this.resolveFile(s.src);
       if (file) this.element(AUDIO_BASE_URL + file);
-      else {
-        const clip = this.resolveClip(s.src);
-        if (clip) packs.add(clip.pack);
-      }
     }
-    for (const n of [...packs].slice(0, MAX_DECODED - 2)) this.loadPack(n).catch(() => {});
   }
-
-  /* ── Lecture ──────────────────────────────────────────────────────────── */
 
   stop(): void {
     this.token++;
@@ -178,37 +100,25 @@ class AudioEngine {
       this.current.pause();
       this.current = null;
     }
-    if (this.currentNode) {
-      try {
-        this.currentNode.stop();
-      } catch {
-        /* déjà arrêté */
-      }
-      this.currentNode = null;
-    }
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
     this.resolveCurrent?.();
     this.resolveCurrent = null;
     useAudioState.setState({ playingId: null, source: null });
   }
 
   /**
-   * Joue un son. Ordre des sources :
-   *   1. enregistrement déposé dans public/audio ;
-   *   2. mots du Coran : récitation mot-à-mot de Quran.com (si activée) ;
-   *   3. son intégré à l’application (paquets générés) ;
-   *   4. voix arabe de l’appareil.
-   * La promesse se résout à la fin de la lecture (ou si un autre son l’interrompt).
+   * Joue un son : l’enregistrement local s’il existe, sinon (mots du Coran) la
+   * récitation de Quran.com. La promesse se résout à la fin de la lecture, ce
+   * qui permet d’enchaîner une « lecture guidée ».
    */
   async play(sound: Sound, key: string = sound.id): Promise<void> {
-    // Synchrone, pendant le geste de l’utilisateur : indispensable sur iOS.
+    // Pendant le geste de l’utilisateur : déverrouille le son sur iOS.
     unlockAudio();
     this.stop();
     const token = this.token;
     const settings = useSettings.getState();
     useAudioState.setState({ playingId: key });
 
-    await this.ready();
+    await this.loadManifest();
     if (token !== this.token) return;
 
     const urls: { url: string; source: 'file' | 'remote' }[] = [];
@@ -224,18 +134,9 @@ class AudioEngine {
       this.failedUrls.add(url);
     }
 
-    const clip = this.resolveClip(sound.src);
-    if (clip && (await this.playClip(clip, token, settings.playbackRate))) return this.finish(token);
-    if (token !== this.token) return;
-
-    if (settings.ttsFallback && sound.tts && (await this.speak(toSpeechText(sound.tts), sound.src, token, settings.playbackRate))) {
-      return this.finish(token);
-    }
-    if (token !== this.token) return;
-
-    // Aucun son disponible : on garde le retour visuel et on prévient une seule fois.
-    this.notifyMissing('voice', sound.src);
-    this.setSource('silent');
+    // Aucun enregistrement : animation seule, et explication une seule fois.
+    this.notifyMissing(sound.remote ? 'online' : 'recording', sound.src);
+    useAudioState.setState({ source: 'silent', lastSource: 'silent' });
     await new Promise<void>((resolve) => {
       this.resolveCurrent = resolve;
       setTimeout(resolve, 650);
@@ -243,62 +144,17 @@ class AudioEngine {
     this.finish(token);
   }
 
-  private setSource(source: AudioSource) {
-    useAudioState.setState({ source, lastSource: source });
-  }
-
   private finish(token: number) {
     if (token === this.token) {
       this.resolveCurrent = null;
-      this.currentNode = null;
       useAudioState.setState({ playingId: null, source: null });
     }
   }
 
-  private notifyMissing(kind: 'file' | 'voice', src: string) {
-    if (this.noticeShown) return;
-    this.noticeShown = true;
+  private notifyMissing(kind: MissingKind, src: string) {
+    if (this.noticesShown.has(kind)) return;
+    this.noticesShown.add(kind);
     useAudioState.setState({ missingNotice: { kind, src } });
-  }
-
-  /** Joue un extrait d’un paquet intégré via Web Audio (fonctionne sur tous les navigateurs récents). */
-  private async playClip(clip: { pack: number; start: number; duration: number }, token: number, rate: number): Promise<boolean> {
-    const ac = getAudioContext();
-    if (!ac) return false;
-    let buffer: AudioBuffer;
-    try {
-      buffer = await this.loadPack(clip.pack);
-    } catch {
-      return false;
-    }
-    if (token !== this.token) return true;
-    if (ac.state !== 'running') await ac.resume().catch(() => {});
-    return new Promise((resolve) => {
-      const node = ac.createBufferSource();
-      node.buffer = buffer;
-      node.playbackRate.value = rate;
-      node.connect(ac.destination);
-      let settled = false;
-      const done = (ok: boolean) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve(ok);
-      };
-      node.onended = () => done(true);
-      this.resolveCurrent = () => done(true);
-      this.currentNode = node;
-      // Filet de sécurité si « ended » n’arrive pas (onglet en arrière-plan…).
-      const timer = setTimeout(() => done(true), (clip.duration / rate) * 1000 + 1500);
-      this.setSource('pack');
-      try {
-        // +80 ms : absorbe le léger décalage introduit par certains décodeurs MP3
-        // (l’extrait est suivi d’un silence dans le paquet).
-        node.start(0, Math.max(0, clip.start), clip.duration + 0.08);
-      } catch {
-        done(false);
-      }
-    });
   }
 
   private playUrl(url: string, token: number, rate: number, source: 'file' | 'remote'): Promise<boolean> {
@@ -321,13 +177,13 @@ class AudioEngine {
         done(false);
       };
       const onPlaying = () => clearTimeout(startTimer);
-      // Réseau lent ou bloqué : on bascule sur la source suivante.
+      // Réseau lent ou bloqué : on abandonne après quelques secondes.
       const startTimer = setTimeout(
         () => {
           el.pause();
           done(false);
         },
-        source === 'remote' ? 2500 : 4000,
+        source === 'remote' ? 6000 : 4000,
       );
       this.resolveCurrent = () => done(true);
       el.addEventListener('ended', onEnded);
@@ -340,37 +196,8 @@ class AudioEngine {
       }
       el.playbackRate = rate;
       if (token !== this.token) return done(true);
-      this.setSource(source);
+      useAudioState.setState({ source, lastSource: source });
       el.play().catch(() => done(false));
-    });
-  }
-
-  private speak(text: string, src: string, token: number, rate: number): Promise<boolean> {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return Promise.resolve(false);
-    if (!this.voice) this.pickVoice();
-    return new Promise((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = this.voice?.lang ?? 'ar-SA';
-      if (this.voice) utterance.voice = this.voice;
-      utterance.rate = 0.78 * rate;
-      let settled = false;
-      const done = (ok: boolean) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve(ok);
-      };
-      utterance.onend = () => done(true);
-      utterance.onerror = () => done(false);
-      this.resolveCurrent = () => done(true);
-      // Filet de sécurité : certains navigateurs n’émettent jamais « end ».
-      const timer = setTimeout(() => done(true), 4000 + text.length * 250);
-      if (token !== this.token) return done(true);
-      this.setSource('speech');
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-      // Sans voix arabe installée, la synthèse peut rester muette : on le signale.
-      this.notifyMissing(this.voice ? 'file' : 'voice', src);
     });
   }
 

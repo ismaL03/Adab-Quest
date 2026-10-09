@@ -17,10 +17,10 @@ export default function ProfilePage() {
   const lvl = levelFromXp(progress.xp);
   const completed = LESSONS.filter((l) => progress.lessons[l.id]).length;
   const [confirmReset, setConfirmReset] = useState(false);
-  const [audioStats, setAudioStats] = useState<{ files: number; bundled: number } | null>(null);
+  const [recordings, setRecordings] = useState<number | null>(null);
 
   useEffect(() => {
-    audio.stats().then(setAudioStats);
+    audio.recordingsCount().then(setRecordings);
   }, []);
 
   return (
@@ -150,21 +150,15 @@ export default function ProfilePage() {
         <GlassCard className="divide-y divide-line px-5 py-2 md:col-span-2">
           <Toggle
             label="Récitation du Coran en ligne"
-            description="Pour les mots du Coran, utilise en priorité la récitation mot-à-mot de Quran.com (connexion requise)."
+            description="Les mots du Coran (et le vocabulaire qui y figure) sont lus par la récitation mot-à-mot de Quran.com. Connexion requise."
             checked={settings.remoteQuranAudio}
             onChange={(v) => settings.update({ remoteQuranAudio: v })}
           />
-          <Toggle
-            label="Voix de l’appareil en dernier recours"
-            description="Pour les rares éléments sans son intégré, la voix arabe du navigateur lit l’élément."
-            checked={settings.ttsFallback}
-            onChange={(v) => settings.update({ ttsFallback: v })}
-          />
           <p className="py-3 text-sm text-muted">
-            Sons intégrés : <span className="font-semibold text-ink tabular-nums">{audioStats?.bundled ?? '…'}</span> (voix de synthèse
-            arabe, lisible sur tous les appareils) · enregistrements ajoutés :{' '}
-            <span className="font-semibold text-ink tabular-nums">{audioStats?.files ?? '…'}</span>. Vos propres enregistrements, déposés dans{' '}
-            <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">public/audio/</code>, remplacent automatiquement les sons intégrés.
+            Seules des voix humaines sont utilisées, jamais de voix de synthèse. Enregistrements installés pour les lettres et syllabes :{' '}
+            <span className="font-semibold text-ink tabular-nums">{recordings ?? '…'}</span>. Tant qu’un élément n’a pas d’enregistrement, il
+            reste silencieux (seule l’animation est jouée). Ajoutez vos fichiers dans{' '}
+            <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">public/audio/</code>.
           </p>
         </GlassCard>
       </div>

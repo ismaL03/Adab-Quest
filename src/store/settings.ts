@@ -15,8 +15,6 @@ export interface SettingsState {
   playbackRate: number;
   /** Effets sonores de l’interface. */
   sfx: boolean;
-  /** Synthèse vocale arabe si le fichier audio est absent. */
-  ttsFallback: boolean;
   /** Audio mot-à-mot de Quran.com si le fichier local est absent. */
   remoteQuranAudio: boolean;
   /** Lecture automatique du son au début de chaque étape. */
@@ -33,7 +31,6 @@ export const DEFAULT_SETTINGS = {
   transliteration: true,
   playbackRate: 1,
   sfx: true,
-  ttsFallback: true,
   remoteQuranAudio: true,
   autoplay: true,
   onboarded: false,

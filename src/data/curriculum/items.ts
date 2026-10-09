@@ -1,4 +1,5 @@
 import { sounds, type Sound } from '@/audio/sounds';
+import QURAN_WORD_AUDIO from './quranWordAudio.json';
 import { graphemes, MARKS } from '@/lib/arabic';
 import { ALL_LETTERS, letter as getLetter, type Letter } from '@/data/letters';
 import type { Item } from './types';
@@ -116,7 +117,7 @@ const consonant = (l: Letter) => (l.id === 'alif' ? '' : l.translit);
 
 export function soundForText(text: string): Sound {
   const key = syllableKey(text);
-  return { id: `syl:${key}`, src: `syllables/${key}.mp3`, tts: text };
+  return { id: `syl:${key}`, src: `syllables/${key}.mp3`, text };
 }
 
 export function textItem(ar: string, label?: string, meaning?: string): Item {
@@ -177,7 +178,8 @@ export interface WordEntry {
 }
 
 export function wordItem(w: WordEntry): Item {
-  return { id: `word:${w.slug}`, ar: w.ar, sound: sounds.word(w.slug, w.ar), label: w.translit, meaning: w.fr };
+  const quranKey = (QURAN_WORD_AUDIO as Record<string, string>)[w.slug];
+  return { id: `word:${w.slug}`, ar: w.ar, sound: sounds.word(w.slug, w.ar, quranKey), label: w.translit, meaning: w.fr };
 }
 
 /** Syllabes cliquables d’un mot (pour les exercices d’assemblage). */

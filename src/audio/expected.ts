@@ -11,7 +11,7 @@ import type { Sound } from './sounds';
 export function expectedAudio(): { src: string; text: string }[] {
   const map = new Map<string, string>();
   const add = (s: Sound | undefined) => {
-    if (s?.src && !s.src.startsWith('quran/')) map.set(s.src, s.tts ?? '');
+    if (s?.src && !s.src.startsWith('quran/')) map.set(s.src, s.text ?? '');
   };
   const addItem = (i: Item | undefined) => add(i?.sound);
   const fromStep = (step: Step) => {

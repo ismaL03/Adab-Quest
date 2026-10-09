@@ -61,14 +61,23 @@ export function Toaster() {
           >
             <Info className="mt-0.5 size-5 shrink-0 text-primary" />
             <div className="min-w-0 flex-1 text-sm">
-              <p className="font-bold">Audio de démonstration</p>
-              <p className="text-muted">
-                {missing.kind === 'file'
-                  ? 'Les enregistrements ne sont pas encore installés : la voix arabe du navigateur prend le relais.'
-                  : 'Les enregistrements ne sont pas encore installés et aucune voix arabe n’est disponible sur cet appareil : le retour visuel reste actif.'}{' '}
-                Fichier attendu :{' '}
-                <code className="rounded bg-surface-sunken px-1 py-0.5 text-[0.8em] break-all">public/audio/{missing.src}</code>
-              </p>
+              {missing.kind === 'online' ? (
+                <>
+                  <p className="font-bold">Récitation indisponible ici</p>
+                  <p className="text-muted">
+                    Les mots du Coran sont lus par la récitation de Quran.com : elle demande une connexion et la version en ligne
+                    du site (elle est bloquée dans les aperçus intégrés).
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold">Pas encore d’enregistrement</p>
+                  <p className="text-muted">
+                    Cet élément n’a pas encore de voix humaine enregistrée : seule l’animation est jouée. Fichier attendu :{' '}
+                    <code className="rounded bg-surface-sunken px-1 py-0.5 text-[0.8em] break-all">public/audio/{missing.src}</code>
+                  </p>
+                </>
+              )}
             </div>
             <button type="button" onClick={() => audio.dismissNotice()} className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface-sunken" aria-label="Fermer">
               <X className="size-4" />

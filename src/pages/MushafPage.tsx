@@ -25,9 +25,7 @@ const PAGE_SIZE = 12;
 const SOURCE_LABEL: Record<AudioSource, string> = {
   remote: 'Récitation mot à mot (Quran.com)',
   file: 'Enregistrement',
-  pack: 'Voix de synthèse intégrée (démonstration)',
-  speech: 'Voix de l’appareil',
-  silent: 'Son indisponible',
+  silent: 'Récitation indisponible hors connexion',
 };
 
 export const MARK_OPTIONS: { key: string; label: string; ar: string; marks: string[] }[] = [
@@ -220,7 +218,7 @@ export default function MushafPage() {
               <p className="text-xs font-semibold text-muted">
                 {getSurahMeta(lastWord.surah).name} · verset {lastWord.ayah} · mot {lastWord.position}
               </p>
-              <p className="text-[0.7rem] text-muted">{SOURCE_LABEL[lastSource ?? 'pack']}</p>
+              <p className="text-[0.7rem] text-muted">{SOURCE_LABEL[lastSource ?? 'remote']}</p>
             </div>
             <Arabic className="text-3xl leading-[1.7]">{lastWord.text}</Arabic>
             <button type="button" onClick={() => setLastWord(null)} className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface-sunken" aria-label="Fermer">
