@@ -116,10 +116,12 @@ Une question ratée revient automatiquement en fin de leçon.
 Une prononciation approximative fait plus de mal que de bien à un apprenant : l’application **n’utilise aucune voix de synthèse**. Chaque élément cliquable est lu, dans l’ordre :
 
 1. par **votre enregistrement** `public/audio/<chemin>` s’il existe ;
-2. pour les mots du Coran, par la **récitation mot-à-mot de Quran.com** (connexion requise) — c’est aussi le cas des **77 mots de vocabulaire** des leçons qui figurent tels quels dans le Coran (`src/data/curriculum/quranWordAudio.json`, généré par `npm run quran:words`) ;
+2. pour les mots du Coran, par la **récitation mot-à-mot de Quran.com** (connexion requise) — c’est aussi le cas de **189 mots de vocabulaire** des leçons qui figurent tels quels dans le Coran (`src/data/curriculum/quranWordAudio.json`, généré par `npm run quran:words`) ;
 3. sinon, l’élément reste **silencieux** : seule l’animation est jouée, et un message l’explique une fois.
 
-La récitation en ligne fonctionne sur le site publié (voir « Déploiement ») ; elle est bloquée dans les aperçus intégrés qui interdisent l’audio externe. Les **lettres et syllabes** n’ont pas de source humaine libre : elles attendent vos enregistrements (enseignant, ou audio dont vous avez les droits).
+La récitation en ligne fonctionne sur le site publié (voir « Déploiement ») ; elle est bloquée dans les aperçus intégrés qui interdisent l’audio externe.
+
+**Enregistrements inclus** (141 fichiers, dans `public/audio/`) : le **nom des 28 lettres**, chaque lettre avec **fatha, kasra et damma** (84 syllabes) et les **mots-clés** des leçons, issus du dépôt [bubblesinarabic/alphabets-audio](https://github.com/bubblesinarabic/alphabets-audio) (silences coupés, volume harmonisé). Restent à enregistrer : voyelles longues, soukoun, tanwîn, chadda et les mots absents du Coran (`docs/audio-attendus.txt`).
 
 ### Ajouter des enregistrements
 
@@ -200,4 +202,5 @@ Le build standard (`npm run build` → `dist/`) est un site statique :
   npm run quran:build -- package/src/data
   ```
 - **Récitation mot-à-mot** : Quran.com (chargée en ligne, non redistribuée dans le dépôt).
+- **Lettres, syllabes et mots-clés** (`public/audio/letters`, `syllables`, `words/kw-*`, `words/tin`, `words/bayt`) : enregistrements de [Bubbles in Arabic](https://github.com/bubblesinarabic/alphabets-audio). Ce dépôt ne précise pas de licence : les droits restent à son auteur, dont l’autorisation doit être demandée pour une diffusion publique. Pour les retirer, il suffit de supprimer ces fichiers puis de lancer `npm run audio:manifest`.
 - **Interface** : Manrope et Fraunces (SIL OFL), icônes Lucide (ISC).

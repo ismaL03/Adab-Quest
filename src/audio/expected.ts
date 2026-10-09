@@ -16,6 +16,9 @@ export function expectedAudio(): { src: string; text: string }[] {
   const addItem = (i: Item | undefined) => add(i?.sound);
   const fromStep = (step: Step) => {
     switch (step.kind) {
+      case 'letter':
+        addItem(step.keyword);
+        break;
       case 'intro':
         addItem(step.hero);
         step.items?.forEach(addItem);

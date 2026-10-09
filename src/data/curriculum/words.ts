@@ -11,35 +11,39 @@ import type { WordEntry } from './items';
  */
 const w = (slug: string, ar: string, translit: string, fr: string): WordEntry => ({ slug, ar, translit, fr });
 
-/** Mots-clés illustrant chaque lettre (comme l’image en tête de leçon du livre). */
+/**
+ * Mots-clés illustrant chaque lettre (comme l’image en tête de leçon du livre).
+ * Ils sont enregistrés isolés, donc lus à l’arrêt (« bâb » pour بَابٌ) :
+ * la translittération suit cette prononciation.
+ */
 export const KEYWORDS: Record<string, WordEntry> = {
-  ba: w('kw-bab', 'بَابٌ', 'bâboun', 'une porte'),
-  ta: w('kw-tut', 'تُوتٌ', 'toûtoun', 'des mûres'),
-  tha: w('kw-thawb', 'ثَوْبٌ', 'thawboun', 'un vêtement'),
-  nun: w('kw-nahla', 'نَحْلَةٌ', 'naḥlatoun', 'une abeille'),
-  ya: w('kw-yad', 'يَدٌ', 'yadoun', 'une main'),
-  ra: w('kw-rumman', 'رُمَّانٌ', 'roummânoun', 'des grenades'),
-  dal: w('kw-dajaja', 'دَجَاجَةٌ', 'dajâjatoun', 'une poule'),
-  waw: w('kw-warda', 'وَرْدَةٌ', 'wardatoun', 'une rose'),
-  zay: w('kw-zaytun', 'زَيْتُونٌ', 'zaytoûnoun', 'des olives'),
-  dhal: w('kw-dhahab', 'ذَهَبٌ', 'dhahaboun', 'de l’or'),
-  mim: w('kw-mawz', 'مَوْزٌ', 'mawzoun', 'des bananes'),
-  lam: w('kw-laymun', 'لَيْمُونٌ', 'laymoûnoun', 'des citrons'),
-  kaf: w('kw-kitab', 'كِتَابٌ', 'kitâboun', 'un livre'),
-  ha: w('kw-hilal', 'هِلَالٌ', 'hilâloun', 'un croissant de lune'),
-  sin: w('kw-samak', 'سَمَكٌ', 'samakoun', 'des poissons'),
-  shin: w('kw-shams', 'شَمْسٌ', 'shamsoun', 'un soleil'),
-  qaf: w('kw-qamar', 'قَمَرٌ', 'qamaroun', 'une lune'),
-  jim: w('kw-jamal', 'جَمَلٌ', 'jamaloun', 'un chameau'),
-  hha: w('kw-hisan', 'حِصَانٌ', 'ḥiṣânoun', 'un cheval'),
-  kha: w('kw-khubz', 'خُبْزٌ', 'khoubzoun', 'du pain'),
-  fa: w('kw-fawakih', 'فَوَاكِهُ', 'fawâkihou', 'des fruits'),
-  ayn: w('kw-inab', 'عِنَبٌ', '‘inaboun', 'du raisin'),
-  ghayn: w('kw-ghazal', 'غَزَالٌ', 'ghazâloun', 'une gazelle'),
-  sad: w('kw-saqr', 'صَقْرٌ', 'ṣaqroun', 'un faucon'),
-  dad: w('kw-difda', 'ضِفْدَعٌ', 'ḍifda‘oun', 'une grenouille'),
-  taa: w('kw-tair', 'طَائِرٌ', 'ṭâ’iroun', 'un oiseau'),
-  dhaa: w('kw-zarf', 'ظَرْفٌ', 'ẓarfoun', 'une enveloppe'),
+  ba: w('kw-bab', 'بَابٌ', 'bâb', 'une porte'),
+  ta: w('kw-tuffaha', 'تُفَّاحَةٌ', 'touffâḥah', 'une pomme'),
+  tha: w('kw-thawb', 'ثَوْبٌ', 'thawb', 'un vêtement'),
+  nun: w('kw-nakhla', 'نَخْلَةٌ', 'nakhlah', 'un palmier'),
+  ya: w('kw-yad', 'يَدٌ', 'yad', 'une main'),
+  ra: w('kw-rumman', 'رُمَّانٌ', 'roummân', 'des grenades'),
+  dal: w('kw-daftar', 'دَفْتَرٌ', 'daftar', 'un cahier'),
+  waw: w('kw-warda', 'وَرْدَةٌ', 'wardah', 'une rose'),
+  zay: w('kw-zahra', 'زَهْرَةٌ', 'zahrah', 'une fleur'),
+  dhal: w('kw-dhib', 'ذِئْبٌ', 'dhi’b', 'un loup'),
+  mim: w('kw-mawz', 'مَوْزٌ', 'mawz', 'des bananes'),
+  lam: w('kw-laymun', 'لَيْمُونٌ', 'laymoûn', 'des citrons'),
+  kaf: w('kw-kitab', 'كِتَابٌ', 'kitâb', 'un livre'),
+  ha: w('kw-hadiyya', 'هَدِيَّةٌ', 'hadiyyah', 'un cadeau'),
+  sin: w('kw-samaka', 'سَمَكَةٌ', 'samakah', 'un poisson'),
+  shin: w('kw-shams', 'شَمْسٌ', 'shams', 'un soleil'),
+  qaf: w('kw-qamar', 'قَمَرٌ', 'qamar', 'une lune'),
+  jim: w('kw-jabal', 'جَبَلٌ', 'jabal', 'une montagne'),
+  hha: w('kw-hibr', 'حِبْرٌ', 'ḥibr', 'de l’encre'),
+  kha: w('kw-khawkh', 'خَوْخٌ', 'khawkh', 'des pêches'),
+  fa: w('kw-fil', 'فِيلٌ', 'fîl', 'un éléphant'),
+  ayn: w('kw-inab', 'عِنَبٌ', '‘inab', 'du raisin'),
+  ghayn: w('kw-ghazal', 'غَزَالٌ', 'ghazâl', 'une gazelle'),
+  sad: w('kw-saqr', 'صَقْرٌ', 'ṣaqr', 'un faucon'),
+  dad: w('kw-difda', 'ضِفْدَعٌ', 'ḍifda‘', 'une grenouille'),
+  taa: w('kw-taira', 'طَائِرَةٌ', 'ṭâ’irah', 'un avion'),
+  dhaa: w('kw-zarf', 'ظَرْفٌ', 'ẓarf', 'une enveloppe'),
 };
 
 /** Mots des leçons, indexés par identifiant de leçon. */
