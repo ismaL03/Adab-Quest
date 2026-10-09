@@ -8,12 +8,26 @@ import type { Sound } from './sounds';
  * Inventaire de tous les sons (hors mots du Coran) utilisés par le parcours :
  * sert à générer la liste des fichiers à enregistrer (`npm run audio:list`).
  */
-export function expectedAudio(): { src: string; text: string }[] {
-  const map = new Map<string, string>();
-  const add = (s: Sound | undefined) => {
-    if (s?.src && !s.src.startsWith('quran/')) map.set(s.src, s.text ?? '');
+export interface ExpectedSound {
+  src: string;
+  /** Texte arabe à prononcer. */
+  text: string;
+  /** Translittération, si connue. */
+  label?: string;
+  /** Sens (mots). */
+  meaning?: string;
+  /** Lu par la récitation en ligne de Quran.com (mots du Coran). */
+  remote?: boolean;
+}
+
+export function expectedAudio(): ExpectedSound[] {
+  const map = new Map<string, ExpectedSound>();
+  const add = (s: Sound | undefined, extra: Partial<ExpectedSound> = {}) => {
+    if (!s?.src || s.src.startsWith('quran/')) return;
+    const prev = map.get(s.src);
+    map.set(s.src, { src: s.src, text: s.text ?? '', remote: !!s.remote, label: prev?.label ?? extra.label, meaning: prev?.meaning ?? extra.meaning });
   };
-  const addItem = (i: Item | undefined) => add(i?.sound);
+  const addItem = (i: Item | undefined) => add(i?.sound, { label: i?.label, meaning: i?.meaning });
   const fromStep = (step: Step) => {
     switch (step.kind) {
       case 'letter':
@@ -57,5 +71,5 @@ export function expectedAudio(): { src: string; text: string }[] {
     addItem(shaddaItem(l.id));
   }
   LESSONS.forEach((l) => l.steps.forEach(fromStep));
-  return [...map].map(([src, text]) => ({ src, text })).sort((a, b) => a.src.localeCompare(b.src));
+  return [...map.values()].sort((a, b) => a.src.localeCompare(b.src));
 }

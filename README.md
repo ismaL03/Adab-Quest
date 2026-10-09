@@ -123,7 +123,18 @@ La récitation en ligne fonctionne sur le site publié (voir « Déploiement »)
 
 **Enregistrements inclus** (141 fichiers, dans `public/audio/`) : le **nom des 28 lettres**, chaque lettre avec **fatha, kasra et damma** (84 syllabes) et les **mots-clés** des leçons, issus du dépôt [bubblesinarabic/alphabets-audio](https://github.com/bubblesinarabic/alphabets-audio) (silences coupés, volume harmonisé). Restent à enregistrer : voyelles longues, soukoun, tanwîn, chadda et les mots absents du Coran (`docs/audio-attendus.txt`).
 
-### Ajouter des enregistrements
+### Studio d’enregistrement (pour enseignant)
+
+Les sons encore muets (voyelles longues, soukoun, tanwîn, chadda, mots absents du Coran : 376 aujourd’hui) n’existent dans aucune source libre. Le **Studio** (`/studio`, accessible depuis le Profil ou depuis l’avertissement « Pas encore d’enregistrement ») permet de les enregistrer au micro, un par un :
+
+- carte guidée : texte arabe en grand, translittération, consigne (« allonge sur deux temps »…), bouton micro (ou touche Espace), réécoute, passage automatique au son suivant ;
+- silences coupés et volume harmonisé dans le navigateur ; les enregistrements sont **joués aussitôt sur cet appareil** (stockés localement) ;
+- **Exporter (.zip)** produit un fichier aux bons noms ; **Importer** recharge l’export d’un enseignant sur un autre appareil ;
+- pour les publier pour tout le monde : `npm run audio:import -- iqra-enregistrements-AAAA-MM-JJ.zip` (conversion MP3 avec ffmpeg, manifeste régénéré), puis commit.
+
+Les apprenants n’ont jamais besoin du micro : le Studio sert uniquement à créer les voix.
+
+### Ajouter des enregistrements à la main
 
 1. `npm run audio:list` écrit dans `docs/audio-attendus.txt` la liste des sons utilisés, avec le texte arabe à enregistrer.
 2. Déposez les fichiers dans `public/audio/` en respectant les chemins :

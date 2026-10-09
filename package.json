@@ -15,12 +15,14 @@
     "audio:manifest": "node scripts/audio-manifest.mjs",
     "audio:list": "node scripts/audio-manifest.mjs --list",
     "quran:build": "node scripts/build-quran-data.mjs",
-    "quran:words": "node scripts/map-quran-words.mjs"
+    "quran:words": "node scripts/map-quran-words.mjs",
+    "audio:import": "node scripts/import-recordings.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "5.3.0",
     "@fontsource-variable/manrope": "5.3.0",
     "canvas-confetti": "1.9.4",
+    "fflate": "0.8.2",
     "lucide-react": "0.577.0",
     "motion": "12.43.0",
     "react": "19.2.8",

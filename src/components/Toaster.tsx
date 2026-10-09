@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Info, X } from 'lucide-react';
+import { Link } from 'react-router';
+import { Info, Mic, X } from 'lucide-react';
 import { audio, useAudioState } from '@/audio/engine';
 import { cn } from '@/lib/cn';
 import { BadgeGlyph } from './BadgeGlyph';
@@ -76,6 +77,13 @@ export function Toaster() {
                     Cet élément n’a pas encore de voix humaine enregistrée : seule l’animation est jouée. Fichier attendu :{' '}
                     <code className="rounded bg-surface-sunken px-1 py-0.5 text-[0.8em] break-all">public/audio/{missing.src}</code>
                   </p>
+                  <Link
+                    to={`/studio?src=${encodeURIComponent(missing.src)}`}
+                    onClick={() => audio.dismissNotice()}
+                    className="mt-1.5 inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                  >
+                    <Mic className="size-3.5" /> L’enregistrer dans le Studio
+                  </Link>
                 </>
               )}
             </div>

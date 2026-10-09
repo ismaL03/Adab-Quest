@@ -2,8 +2,8 @@
 /**
  * Recense les fichiers audio présents dans public/audio et écrit
  * public/audio/manifest.json. L’application ne tente de lire que les fichiers
- * listés : les autres basculent instantanément sur la source de secours
- * (audio Quran.com pour les mots du Coran, synthèse vocale sinon).
+ * listés : les autres basculent sur la récitation de Quran.com (mots du Coran)
+ * ou restent muets.
  *
  *   npm run audio:manifest          → régénère le manifeste
  *   npm run audio:list              → liste aussi les fichiers attendus manquants
@@ -39,19 +39,20 @@ if (process.argv.includes('--list')) {
     const { expectedAudio } = await server.ssrLoadModule('/src/audio/expected.ts');
     const expected = expectedAudio();
     const present = new Set(files.map((f) => f.replace(/\.[a-z0-9]+$/i, '')));
-    const missing = expected.filter((e) => !present.has(e.src.replace(/\.[a-z0-9]+$/i, '')));
+    const has = (e) => present.has(e.src.replace(/\.[a-z0-9]+$/i, ''));
+    const missing = expected.filter((e) => !has(e) && !e.remote);
     const out = path.join(root, 'docs/audio-attendus.txt');
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(
       out,
       [
         '# Fichiers audio attendus par le parcours (chemin relatif à public/audio — texte à enregistrer)',
-        '# Les mots du Coran (quran/wbw/SSS_AAA_MMM.mp3) sont servis par Quran.com par défaut.',
+        '# ✓ enregistrement présent · ☁ lu en ligne par la récitation de Quran.com · ◦ muet (à enregistrer, par ex. dans le Studio de l’application)',
         '',
-        ...expected.map((e) => `${present.has(e.src.replace(/\.[a-z0-9]+$/i, '')) ? '✓' : '·'} ${e.src}\t${e.text}`),
+        ...expected.map((e) => `${has(e) ? '✓' : e.remote ? '☁' : '◦'} ${e.src}\t${e.text}`),
       ].join('\n') + '\n',
     );
-    console.log(`  ${expected.length} sons utilisés par le parcours, ${missing.length} manquant(s).`);
+    console.log(`  ${expected.length} sons utilisés par le parcours, ${missing.length} encore muet(s).`);
     console.log(`  Liste complète écrite dans ${path.relative(root, out)}`);
   } finally {
     await server.close();

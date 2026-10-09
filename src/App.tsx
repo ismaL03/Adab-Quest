@@ -19,6 +19,7 @@ const LessonPage = lazy(() => import('@/pages/LessonPage'));
 const MushafPage = lazy(() => import('@/pages/MushafPage'));
 const AlphabetPage = lazy(() => import('@/pages/AlphabetPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const StudioPage = lazy(() => import('@/pages/StudioPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 function PageFallback() {
@@ -55,6 +56,7 @@ const routes: RouteObject[] = [
             { path: 'mushaf', element: <MushafPage /> },
             { path: 'alphabet', element: <AlphabetPage /> },
             { path: 'profil', element: <ProfilePage /> },
+            { path: 'studio', element: <StudioPage /> },
           ],
         },
         { path: 'lecon/:lessonId', element: <LessonPage /> },
