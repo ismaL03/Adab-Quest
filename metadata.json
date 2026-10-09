@@ -1,7 +1,0 @@
-{
-  "name": "Copy of Adab Quest",
-  "description": "Une application de gamification spirituelle et éthique. Level Up Your Soul.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
-}

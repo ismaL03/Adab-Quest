@@ -1,0 +1,335 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/manrope';
+@import '@fontsource-variable/fraunces';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Police coranique : KFGQPC HAFS Uthmanic Script (Complexe du Roi Fahd)
+   ────────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'KFGQPC Uthmanic Hafs';
+  src: url('/fonts/UthmanicHafs1Ver18.woff2') format('woff2');
+  font-display: block;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F, U+25CC;
+}
+
+/*
+ * Dans la police KFGQPC, le yâ’ isolé ou final s’écrit sans points (convention
+ * du Mushaf de Médine). Pour présenter la lettre seule aux débutants, on emprunte
+ * ce seul glyphe à Amiri Quran (SIL OFL).
+ */
+@font-face {
+  font-family: 'Iqra Ya';
+  src: url('/fonts/amiri-quran-arabic-400-normal.woff2') format('woff2');
+  font-display: swap;
+  /* yâ’ + ses voyelles (pour que lettre et signes viennent de la même police) */
+  unicode-range: U+064A, U+064B-065F, U+0670;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Design tokens (clair par défaut, sombre via .dark)
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg: #f6f3ec;
+  --bg-elevated: #fbf9f4;
+  --surface: rgb(255 255 255 / 0.66);
+  --surface-strong: rgb(255 255 255 / 0.9);
+  --surface-sunken: rgb(18 20 23 / 0.035);
+  --ink: #14171a;
+  --ink-soft: #3a3f45;
+  --muted: #6f747a;
+  --line: rgb(20 23 26 / 0.08);
+  --line-strong: rgb(20 23 26 / 0.14);
+  --primary: #0e7c66;
+  --primary-strong: #0a5c4c;
+  --primary-soft: rgb(14 124 102 / 0.1);
+  --on-primary: #ffffff;
+  --gold: #b88a2e;
+  --gold-bright: #d9ae52;
+  --gold-soft: rgb(196 150 60 / 0.14);
+  --success: #138a5e;
+  --success-soft: rgb(19 138 94 / 0.12);
+  --danger: #c8443f;
+  --danger-soft: rgb(200 68 63 / 0.1);
+  --highlight: #e8b64a;
+  --highlight-glow: rgb(232 182 74 / 0.55);
+  --paper: #fffdf7;
+  --paper-edge: #efe6d2;
+  --paper-ink: #1b1a17;
+  --shadow-color: 30 26 18;
+  --glass-blur: 18px;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #090d0c;
+  --bg-elevated: #0f1514;
+  --surface: rgb(255 255 255 / 0.045);
+  --surface-strong: rgb(22 29 28 / 0.92);
+  --surface-sunken: rgb(255 255 255 / 0.03);
+  --ink: #eceee9;
+  --ink-soft: #c6cbc5;
+  --muted: #8e958f;
+  --line: rgb(255 255 255 / 0.07);
+  --line-strong: rgb(255 255 255 / 0.13);
+  --primary: #33c29b;
+  --primary-strong: #5fd8b5;
+  --primary-soft: rgb(51 194 155 / 0.12);
+  --on-primary: #04130f;
+  --gold: #e0b55a;
+  --gold-bright: #f1cf82;
+  --gold-soft: rgb(224 181 90 / 0.13);
+  --success: #3ccf95;
+  --success-soft: rgb(60 207 149 / 0.12);
+  --danger: #f0716b;
+  --danger-soft: rgb(240 113 107 / 0.12);
+  --highlight: #f2c45e;
+  --highlight-glow: rgb(242 196 94 / 0.45);
+  --paper: #121816;
+  --paper-edge: #26302c;
+  --paper-ink: #ecebe4;
+  --shadow-color: 0 0 0;
+  color-scheme: dark;
+}
+
+@theme {
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces Variable', ui-serif, Georgia, serif;
+  --font-quran: 'KFGQPC Uthmanic Hafs', 'Amiri Quran', 'Scheherazade New', serif;
+
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
+  --color-on-primary: var(--on-primary);
+  --color-gold: var(--gold);
+  --color-gold-bright: var(--gold-bright);
+  --color-gold-soft: var(--gold-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-highlight: var(--highlight);
+  --color-paper: var(--paper);
+  --color-paper-edge: var(--paper-edge);
+  --color-paper-ink: var(--paper-ink);
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.375rem;
+  --radius-3xl: 1.75rem;
+
+  --shadow-soft: 0 1px 2px rgb(var(--shadow-color) / 0.04), 0 8px 24px -12px rgb(var(--shadow-color) / 0.18);
+  --shadow-lift: 0 2px 4px rgb(var(--shadow-color) / 0.05), 0 18px 40px -18px rgb(var(--shadow-color) / 0.35);
+  --shadow-glow: 0 0 0 1px rgb(255 255 255 / 0.04), 0 10px 40px -10px var(--highlight-glow);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --animate-wave: wave 0.9s ease-in-out infinite;
+  --animate-ping-soft: ping-soft 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.35); }
+    50% { transform: scaleY(1); }
+  }
+  @keyframes ping-soft {
+    0% { transform: scale(1); opacity: 0.55; }
+    80%, 100% { transform: scale(1.55); opacity: 0; }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Base
+   ────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-bg font-sans text-ink;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: var(--primary-soft);
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+    border-radius: 10px;
+  }
+}
+
+/*
+ * Couleur, fond et police de la page, volontairement hors des « layers » Tailwind :
+ * une feuille de réinitialisation externe (page hôte, aperçu intégré) ne peut
+ * plus imposer sa propre couleur de texte — sinon texte sombre sur fond sombre.
+ */
+html body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Composants utilitaires
+   ────────────────────────────────────────────────────────────────────────── */
+@utility glass {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility glass-strong {
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  box-shadow: var(--shadow-lift);
+}
+
+/* Texte arabe coranique : rendu fidèle, sans troncature des signes suscrits. */
+@utility font-quran {
+  font-family: var(--font-quran);
+  font-feature-settings: 'calt', 'liga', 'mark', 'mkmk';
+  line-height: 2;
+  word-spacing: 0.04em;
+  font-variant-ligatures: common-ligatures contextual;
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Fond d'ambiance : halos doux + motif géométrique très discret */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 40rem at 85% -10%, rgb(14 124 102 / 0.1), transparent 60%),
+    radial-gradient(50rem 36rem at -10% 20%, rgb(196 150 60 / 0.09), transparent 60%),
+    radial-gradient(40rem 30rem at 50% 110%, rgb(14 124 102 / 0.06), transparent 60%),
+    var(--bg);
+}
+.dark .app-backdrop {
+  background:
+    radial-gradient(60rem 40rem at 85% -10%, rgb(51 194 155 / 0.1), transparent 60%),
+    radial-gradient(50rem 36rem at -10% 20%, rgb(224 181 90 / 0.06), transparent 60%),
+    radial-gradient(40rem 30rem at 50% 110%, rgb(51 194 155 / 0.05), transparent 60%),
+    var(--bg);
+}
+.app-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%23887a5c' stroke-opacity='.13' stroke-width='.8'%3E%3Cpath d='M48 8l11.3 16.4L78 20l-4.4 19.6L88 48l-14.4 8.4L78 76l-18.7-4.4L48 88 36.7 71.6 18 76l4.4-19.6L8 48l14.4-8.4L18 20l18.7 4.4z'/%3E%3Ccircle cx='48' cy='48' r='14'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 75%);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Couleurs Tajweed (convention des mushafs Dar al-Ma'rifah)
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --tj-silent: #a3a3a3;
+  --tj-madd-2: #c8941b;
+  --tj-madd-246: #e07a12;
+  --tj-madd-45: #d6451e;
+  --tj-madd-6: #b3122a;
+  --tj-qalqala: #1f8fd6;
+  --tj-ghunna: #12935f;
+  --tj-ikhfa: #7a3fb8;
+  --tj-idgham: #2e9b45;
+  --tj-idgham-no: #8a8f98;
+  --tj-iqlab: #0f9aa8;
+  --tj-tafkhim: #2a54c8;
+}
+.dark {
+  --tj-silent: #7d8380;
+  --tj-madd-2: #f0bf4c;
+  --tj-madd-246: #ff9d47;
+  --tj-madd-45: #ff6b45;
+  --tj-madd-6: #ff4d63;
+  --tj-qalqala: #5ab8ff;
+  --tj-ghunna: #43d18f;
+  --tj-ikhfa: #b689f0;
+  --tj-idgham: #6fd47f;
+  --tj-idgham-no: #a4aab2;
+  --tj-iqlab: #46d3df;
+  --tj-tafkhim: #7d9cff;
+}
+
+/* Pulsation du mot étudié dans la Vue Mushaf */
+.mushaf-highlight {
+  color: var(--highlight) !important;
+  text-shadow:
+    0 0 14px var(--highlight-glow),
+    0 0 2px var(--highlight-glow);
+}
+
+/* Onde de clic sur les éléments sonores */
+@keyframes ripple {
+  from {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0.55;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(9);
+    opacity: 0;
+  }
+}
+.ripple {
+  animation: ripple 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
