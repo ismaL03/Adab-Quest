@@ -1,21 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { LESSONS, MODULES, isLessonUnlocked } from '@/data/curriculum';
+import { LESSONS, MODULES, isLessonUnlocked, type Item, type Step } from '@/data/curriculum';
+import { letterPosition } from '@/data/curriculum/builders';
 import { graphemeKey, syllabify, syllableKey } from '@/data/curriculum/items';
-import { letter } from '@/data/letters';
+import { LESSON_WORDS, SENTENCES } from '@/data/curriculum/words';
+import { ALL_LETTERS, letter } from '@/data/letters';
+import { graphemes, isCombining, TATWEEL } from '@/lib/arabic';
 
 describe('parcours pédagogique', () => {
-  it('contient 9 étapes dans l’ordre de la méthode', () => {
+  it('commence par le système de lecture, puis une lettre par leçon', () => {
     expect(MODULES.map((m) => m.id)).toEqual([
-      'lettres',
-      'voyelles',
-      'soukoun',
-      'liees',
-      'madd',
-      'tanwin',
-      'chadda',
-      'article',
+      'systeme',
+      'famille-ba',
+      'non-attachees',
+      'frequentes',
+      'gorge',
+      'soleil-lune',
+      'dernieres',
       'mushaf',
     ]);
+    expect(LESSONS.slice(0, 3).map((l) => l.id)).toEqual(['sons', 'soukoun', 'voyelles-longues']);
   });
 
   it('a des identifiants de leçons et d’étapes uniques', () => {
@@ -25,11 +28,86 @@ describe('parcours pédagogique', () => {
     expect(new Set(stepIds).size).toBe(stepIds.length);
   });
 
-  it('couvre les 28 lettres de l’alphabet dans l’étape 1', () => {
-    const seen = new Set(
-      MODULES[0].lessons.flatMap((l) => l.steps.flatMap((s) => (s.kind === 'letter' ? [s.letterId] : []))),
-    );
-    expect(seen.size).toBe(29); // 28 lettres + la hamza
+  it('présente chacune des 28 lettres (et la hamza) une seule fois', () => {
+    const seen = LESSONS.flatMap((l) => l.steps.flatMap((s) => (s.kind === 'letter' ? [s.letterId] : [])));
+    expect(new Set(seen).size).toBe(29);
+    expect(seen.length).toBe(29);
+  });
+
+  it('chaque nouvelle lettre se cherche ensuite dans le Mushaf', () => {
+    for (const l of LESSONS) {
+      const letterStep = l.steps.find((s) => s.kind === 'letter');
+      if (!letterStep || letterStep.letterId === 'alif' || letterStep.letterId === 'hamza') continue;
+      expect(l.steps.at(-1)?.kind, l.id).toBe('mushaf');
+    }
+  });
+
+  it('ne fait lire que des lettres et des signes déjà étudiés', () => {
+    // Ce que chaque leçon notionnelle débloque (le reste vient des fiches « lettre »).
+    const UNLOCKS: Record<string, string[]> = {
+      sons: ['ب', '\u064E', '\u0650', '\u064F'],
+      soukoun: ['\u0652'],
+      'voyelles-longues': ['ا', 'و', 'ي'],
+      tanwin: ['\u064B', '\u064C', '\u064D'],
+      chadda: ['\u0651'],
+      'ta-marbuta': ['ة'],
+      hamza: ['ء', 'أ', 'إ', 'ؤ', 'ئ'],
+      'alif-maqsura': ['ى'],
+      article: ['ٱ'],
+      'petites-lettres': ['\u0670', '\u06E5', '\u06E6'],
+    };
+    const known = new Set<string>();
+    const problems: string[] = [];
+    const check = (lessonId: string, text: string) => {
+      for (const g of graphemes(text)) {
+        if (g.base === ' ' || g.base === TATWEEL) continue;
+        const marks = Array.from(g.text).filter(isCombining);
+        // و et ي sans signe : voyelles longues ; avec un signe : consonnes.
+        const base = (g.base === 'و' || g.base === 'ي') && marks.length ? `${g.base}:consonne` : g.base;
+        for (const need of [base, ...marks]) if (!known.has(need)) problems.push(`${lessonId} : ${text} (${need})`);
+      }
+    };
+    const readItems = (step: Step): Item[] => {
+      switch (step.kind) {
+        case 'discover':
+          return step.items;
+        case 'repeat':
+          return step.lines.flat();
+        case 'listen':
+          return step.options;
+        case 'build':
+          return [step.target, ...step.pieces];
+        case 'match':
+          return step.pairs.map((p) => p.left);
+        default:
+          return [];
+      }
+    };
+    for (const lesson of LESSONS) {
+      for (const ch of UNLOCKS[lesson.id] ?? []) known.add(ch);
+      for (const step of lesson.steps) {
+        if (step.kind !== 'letter') continue;
+        const l = letter(step.letterId);
+        known.add(l.id === 'waw' || l.id === 'ya' ? `${l.char}:consonne` : l.char);
+      }
+      for (const step of lesson.steps) {
+        for (const it of readItems(step)) check(lesson.id, it.ar);
+        if (step.kind === 'choose') {
+          if (step.question.ar) check(lesson.id, step.question.ar);
+          for (const o of step.options) if (o.arabic) check(lesson.id, o.text);
+        }
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it('associe chaque identifiant de mot à une seule orthographe', () => {
+    const all = [...Object.values(LESSON_WORDS).flat(), ...SENTENCES.flatMap((s) => s.words)];
+    const bySlug = new Map<string, string>();
+    for (const w of all) {
+      expect(bySlug.get(w.slug) ?? w.ar, w.slug).toBe(w.ar);
+      bySlug.set(w.slug, w.ar);
+    }
   });
 
   for (const lesson of LESSONS) {
@@ -78,6 +156,17 @@ describe('parcours pédagogique', () => {
     expect(isLessonUnlocked(LESSONS[0].id, (id) => done.has(id))).toBe(true);
     expect(isLessonUnlocked(LESSONS[1].id, (id) => done.has(id))).toBe(true);
     expect(isLessonUnlocked(LESSONS[2].id, (id) => done.has(id))).toBe(false);
+  });
+});
+
+describe('forme de la lettre selon sa place', () => {
+  it('tient compte des lettres qui ne s’attachent pas', () => {
+    expect(letterPosition('تَابَ', 'ت')).toBe('initial');
+    expect(letterPosition('بَيْنَ', 'ي')).toBe('medial');
+    expect(letterPosition('نُورٌ', 'ر')).toBe('isolated');
+    expect(letterPosition('بِنْتْ', 'ت')).toBe('final');
+    expect(letterPosition('بَابَا', 'ب')).toBeNull();
+    expect(ALL_LETTERS.length).toBe(29);
   });
 });
 

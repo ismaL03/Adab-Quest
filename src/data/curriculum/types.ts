@@ -40,6 +40,8 @@ export interface IntroStep extends BaseStep {
 export interface LetterStep extends BaseStep {
   kind: 'letter';
   letterId: string;
+  /** Mot-clé qui illustre la lettre (comme l’image en tête de leçon du livre). */
+  keyword?: Item;
 }
 
 /** Découverte : écouter chaque élément d’une grille. */

@@ -13,9 +13,10 @@ import { createServer } from 'vite';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const server = await createServer({ root, logLevel: 'error', server: { middlewareMode: true, hmr: false }, appType: 'custom' });
 try {
-  const words = Object.values(await server.ssrLoadModule('/src/data/curriculum/words.ts'))
-    .flat()
-    .filter((w) => w && w.slug);
+  // Exports de words.ts : listes de mots, tables { leçon: mots } ou { lettre: mot-clé }, phrases.
+  const flatten = (v) =>
+    Array.isArray(v) ? v.flatMap(flatten) : v && typeof v === 'object' ? (v.slug ? [v] : Object.values(v).flatMap(flatten)) : [];
+  const words = [...new Map(flatten(Object.values(await server.ssrLoadModule('/src/data/curriculum/words.ts'))).map((w) => [w.slug, w])).values()];
   const { loadSurah } = await server.ssrLoadModule('/src/data/quran/loader.ts');
   const { normalizeQuranText } = await server.ssrLoadModule('/src/data/quran/normalize.ts');
   const index = new Map();
