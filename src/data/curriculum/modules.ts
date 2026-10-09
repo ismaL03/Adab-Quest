@@ -218,18 +218,22 @@ const sukunLesson = lesson({
   id: 'soukoun',
   title: 'Le soukoun',
   subtitle: 'Une lettre sans voyelle',
-  glyph: 'بْ',
+  glyph: 'أَبْ',
   steps: (rng) => {
-    const closed = VOWEL_IDS.map((v) => textItem('ب' + VOWELS[v].mark + 'بْ', `b${VOWELS[v].sound}b`));
-    const open = VOWEL_IDS.map((v) => vowelItem('ba', v));
+    const closed = VOWEL_IDS.map((v) => sukunItem('ba', v));
+    const open = VOWEL_IDS.map((v) => vowelItem('alif', v));
     return [
       {
         kind: 'intro',
         eyebrow: 'Nouveau signe',
         title: 'Le soukoun ـْ',
-        body: 'Le **soukoun** est un petit rond posé sur la lettre : elle n’a **pas de voyelle**. Elle se colle alors au son qui la précède : بَ + بْ = بَبْ « bab ».',
-        hero: textItem('بْ', 'b'),
-        tips: ['Un mot ne commence jamais par une lettre au soukoun.', 'Dans le Mushaf, le soukoun s’écrit parfois comme une petite tête de ḥâ’ : ـۡ'],
+        body: 'Le **soukoun** est un petit rond posé sur la lettre : elle n’a **pas de voyelle**. Elle ne se prononce donc jamais seule : elle se colle au son qui la précède. أَ « a » + بْ = أَبْ « ab ».',
+        hero: closed[0],
+        tips: [
+          'Au début, l’alif porte une petite hamza (أ / إ) : ici, elle sert seulement de support à la voyelle.',
+          'Un mot ne commence jamais par une lettre au soukoun.',
+          'Dans le Mushaf, le soukoun s’écrit parfois comme une petite tête de ḥâ’ : ـۡ',
+        ],
       },
       repeat('Ouvert ou fermé ?', open.map((o, i) => [o, closed[i]]), 'Écoute la syllabe, puis la même fermée par un soukoun.'),
       discover('Syllabes fermées', closed),

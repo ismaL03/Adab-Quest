@@ -1,11 +1,12 @@
 import { createRng, hashString, sample, shuffle } from '@/lib/random';
-import { contextualForm, graphemes, MARKS, NON_CONNECTORS, TATWEEL, type LetterPosition } from '@/lib/arabic';
+import { contextualForm, graphemes, NON_CONNECTORS, TATWEEL, type LetterPosition } from '@/lib/arabic';
 import { letter, LETTERS, SHAPE_FAMILIES, SOUND_PAIRS } from '@/data/letters';
 import type { HighlightSpec } from '@/features/mushaf/highlight';
 import type { Passage } from '@/features/mushaf/passage';
 import {
   letterItem,
   maddItem,
+  sukunItem,
   syllableItems,
   tanwinItem,
   textItem,
@@ -243,11 +244,13 @@ export function positionQuiz(word: Item, letterId: string): Draft | null {
    Leçon « une lettre » (structure d’une leçon du livre)
    ────────────────────────────────────────────────────────────────────────── */
 
-/** La lettre avec chaque voyelle courte, le soukoun et (si étudié) le tanwîn. */
+/**
+ * La lettre avec chaque voyelle courte, le soukoun et (si étudié) le tanwîn.
+ * Le soukoun se lit après une voyelle, comme dans la Qâ‘ida : أَبْ « ab ».
+ */
 export function letterVowelItems(letterId: string, { tanwin = false } = {}): Item[] {
-  const l = letter(letterId);
   const items = VOWEL_IDS.map((v) => vowelItem(letterId, v));
-  items.push(textItem(l.char + MARKS.sukun, l.translit));
+  items.push(sukunItem(letterId));
   if (tanwin) items.push(...VOWEL_IDS.map((v) => tanwinItem(letterId, v)));
   return items;
 }

@@ -46,7 +46,7 @@ describe('parcours pédagogique', () => {
     // Ce que chaque leçon notionnelle débloque (le reste vient des fiches « lettre »).
     const UNLOCKS: Record<string, string[]> = {
       sons: ['ب', '\u064E', '\u0650', '\u064F'],
-      soukoun: ['\u0652'],
+      soukoun: ['\u0652', 'أ', 'إ'],
       'voyelles-longues': ['ا', 'و', 'ي'],
       tanwin: ['\u064B', '\u064C', '\u064D'],
       chadda: ['\u0651'],
