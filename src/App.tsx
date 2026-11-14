@@ -537,8 +537,9 @@ function Install({ close }: { close: () => void }) {
               , puis <b>Suivant</b>.
             </li>
             <li>
-              Touchez <b>Nouvelle automatisation vierge</b>, ajoutez l'action <b>Ouvrir des URL</b>, collez le lien, puis{' '}
-              <b>Terminé</b>.
+              Dans la barre <b>Recherche</b> en bas de l'écran, tapez <b>URL</b> et choisissez l'action{' '}
+              <b>Ouvrir des URL</b> (sur un iPhone plus ancien : <b>Nouvelle automatisation vierge</b> d'abord). Collez le
+              lien à la place du mot « URL », puis validez avec <b>✓</b> ou <b>Terminé</b>.
             </li>
           </ol>
           <h3>Sans rappel</h3>
