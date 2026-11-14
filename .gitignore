@@ -1,26 +1,11 @@
-# Dépendances & build
 node_modules
 dist
-dist-ssr
-dist-portable
-*.tsbuildinfo
-coverage
-
-# Logs
-logs
-*.log
-npm-debug.log*
-
-# Environnement
-.env
-.env.*
-!.env.example
-!.env.portable
-*.local
-
-# Éditeurs / OS
-.vscode/*
-!.vscode/extensions.json
-.idea
 .DS_Store
-*.sw?
+*.log
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+android/app/src/main/assets/public
+android/capacitor-cordova-android-plugins
+android/.idea

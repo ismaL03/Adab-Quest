@@ -1,35 +1,19 @@
 <!doctype html>
-<html lang="fr" dir="ltr">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Iqra — Apprendre à lire l'arabe</title>
-    <meta
-      name="description"
-      content="Iqra : une application gratuite et premium pour apprendre à lire l'arabe, des lettres isolées jusqu'à la lecture du Mushaf, avec audio et Tajweed."
-    />
-    <meta name="theme-color" content="#F6F3EC" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#090D0C" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="preload" href="/fonts/UthmanicHafs1Ver18.woff2" as="font" type="font/woff2" crossorigin />
-    <script>
-      // Applique le thème avant le premier rendu (évite le flash clair/sombre).
-      (function () {
-        try {
-          var raw = localStorage.getItem('iqra-settings');
-          var theme = raw ? JSON.parse(raw).state.theme : 'system';
-          var host = document.documentElement.getAttribute('data-theme');
-          var systemDark = host === 'dark' || (host !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-          var dark = theme === 'dark' || (theme !== 'light' && systemDark);
-          document.documentElement.classList.toggle('dark', dark);
-        } catch (e) {}
-      })();
-    </script>
+    <meta name="theme-color" content="#0f5c4a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="As-Siraj" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon-180.png" />
+    <title>As-Siraj</title>
   </head>
   <body>
     <div id="root"></div>
-    <noscript>Iqra nécessite JavaScript pour fonctionner.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

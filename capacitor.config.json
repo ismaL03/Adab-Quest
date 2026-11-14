@@ -1,0 +1,6 @@
+{
+  "appId": "com.siraj.gharib",
+  "appName": "As-Siraj",
+  "webDir": "dist",
+  "android": { "backgroundColor": "#f6f1e4" }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">As-Siraj</string>
+    <string name="title_activity_main">As-Siraj</string>
+    <string name="package_name">com.siraj.gharib</string>
+    <string name="custom_url_scheme">com.siraj.gharib</string>
+</resources>

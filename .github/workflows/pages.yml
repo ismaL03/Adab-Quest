@@ -1,10 +1,9 @@
-name: Site (tests et GitHub Pages)
+name: Version web (GitHub Pages)
 
-# Vérifie chaque pull request, et publie le site à chaque mise à jour de main.
+# Publie la version web (utilisable sur iPhone via « Sur l'écran d'accueil ») à chaque mise à jour de main.
 on:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -13,12 +12,15 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,21 +28,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
-      # Chemins relatifs + routage par « # » : fonctionne sous https://<compte>.github.io/<dépôt>/
-      - run: npm run build:portable
-      - if: github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v3
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist-portable
-
-  deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
