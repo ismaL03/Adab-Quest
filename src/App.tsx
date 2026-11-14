@@ -16,6 +16,7 @@ import {
   setState,
   statusOf,
   subscribe,
+  touch,
   unlockQueue,
   useStore,
   type Pick,
@@ -352,7 +353,13 @@ function UnlockCard({ pick, close }: { pick: Pick; close: () => void }) {
     <div className="sheet unlock">
       <div className="top">
         <h2>{isNative ? 'Mot du déverrouillage' : 'Mot du moment'}</h2>
-        <button className="link" onClick={leave}>
+        <button
+          className="link"
+          onClick={() => {
+            touch(pick.word.id)
+            leave()
+          }}
+        >
           Passer
         </button>
       </div>

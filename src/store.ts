@@ -56,6 +56,12 @@ export function markMany(ids: number[], status: Status) {
   setState({ st })
 }
 
+/** Mot passé sans réponse : il garde son statut mais repart en fin de file. */
+export function touch(id: number) {
+  const cur = state.st[id]
+  if (cur) setState({ st: { ...state.st, [id]: [cur[0], Date.now()] } })
+}
+
 const inScope = (w: Word, s = state) => !s.scope || s.scope.length === 0 || s.scope.includes(w.s)
 
 export function counts(ids?: number[], s = state) {
@@ -93,14 +99,15 @@ export type Pick = { word: Word; kind: 'new' | 'review' }
 // Tout est maîtrisé : on repropose les mots maîtrisés les plus anciens.
 function consolidation(): Pick | null {
   const q = reviewQueue(true)
-  return q.length ? { word: q[Math.floor(Math.random() * Math.min(q.length, 20))], kind: 'review' } : null
+  return q.length ? { word: q[0], kind: 'review' } : null
 }
 
 /** Mot proposé au déverrouillage, selon le mode choisi. */
 export function pickUnlock(mode: UnlockMode = state.unlock.mode): Pick | null {
   const fresh = nextNew()
   const queue = reviewQueue()
-  const review = queue.length ? queue[Math.floor(Math.random() * Math.min(queue.length, 5))] : null
+  // Toujours le mot vu le plus anciennement : aucun mot ne revient avant que les autres soient passés.
+  const review = queue[0] ?? null
   const asNew: Pick | null = fresh && { word: fresh, kind: 'new' }
   const asReview: Pick | null = review && { word: review, kind: 'review' }
   if (mode === 'new') return asNew || asReview || consolidation()
