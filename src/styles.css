@@ -148,3 +148,9 @@ textarea { margin-top: 12px; font-size: 12px; }
 .credit { text-align: center; color: var(--muted); font-size: 12px; margin-top: 18px; }
 .credit .ar { font-size: 15px; }
 .done .btn { flex: none; margin-top: 14px; }
+.guide { margin-top: 14px; }
+.guide h3 { margin-top: 22px; }
+.guide ol { padding-inline-start: 22px; margin: 14px 0; }
+.guide li { margin-bottom: 10px; }
+a.btn { text-decoration: none; }
+.link-text { word-break: break-all; margin: 8px 0 0; }

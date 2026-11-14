@@ -11,4 +11,5 @@ type UnlockPlugin = {
 }
 
 export const isAndroid = Capacitor.getPlatform() === 'android'
+export const isNative = Capacitor.isNativePlatform()
 export const Unlock = registerPlugin<UnlockPlugin>('Unlock')

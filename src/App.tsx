@@ -19,20 +19,37 @@ import {
   type Status,
   type UnlockMode,
 } from './store'
-import { Unlock, isAndroid } from './native'
+import { Unlock, isAndroid, isNative } from './native'
+
+// Version web : ouverte dans le navigateur (pas encore installée) ou depuis l'écran d'accueil.
+const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
+const isAndroidWeb = !isNative && /Android/.test(navigator.userAgent)
+const wordLink = location.origin + location.pathname + '?mot=1'
 
 type Overlay =
   | { t: 'session'; mode: 'new' | 'review'; mastered?: boolean }
   | { t: 'surah'; n: number }
   | { t: 'unlock'; pick: Pick }
   | { t: 'scope' }
+  | { t: 'install' }
 type Tab = 'home' | 'surahs' | 'settings'
 
 const STATUS_LABEL = ['Nouveau', 'À réviser', 'Maîtrisé']
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('home')
-  const [stack, setStack] = useState<Overlay[]>([])
+  const [stack, setStack] = useState<Overlay[]>(() => {
+    if (isNative) return []
+    // Lien « ?mot=1 » (automatisation iPhone) : on ouvre directement sur un mot.
+    if (new URLSearchParams(location.search).has('mot')) {
+      const pick = pickUnlock()
+      return pick ? [{ t: 'unlock', pick }] : []
+    }
+    // Première visite dans le navigateur : on explique comment installer.
+    if (!standalone && !localStorage.getItem('siraj.installSeen')) return [{ t: 'install' }]
+    return []
+  })
   const push = (o: Overlay) => setStack((s) => [...s, o])
   const pop = () => setStack((s) => s.slice(0, -1))
   const top = stack[stack.length - 1]
@@ -84,6 +101,7 @@ export default function App() {
           {top.t === 'session' && <Session mode={top.mode} mastered={top.mastered} close={pop} />}
           {top.t === 'surah' && <SurahView n={top.n} close={pop} />}
           {top.t === 'scope' && <ScopePicker close={pop} />}
+          {top.t === 'install' && <Install close={pop} />}
           {top.t === 'unlock' && <UnlockCard pick={top.pick} close={pop} />}
         </div>
       )}
@@ -273,7 +291,7 @@ function UnlockCard({ pick, close }: { pick: Pick; close: () => void }) {
   return (
     <div className="sheet unlock">
       <div className="top">
-        <h2>Mot du déverrouillage</h2>
+        <h2>{isNative ? 'Mot du déverrouillage' : 'Mot du moment'}</h2>
         <button className="link" onClick={leave}>
           Passer
         </button>
@@ -450,6 +468,95 @@ function ScopePicker({ close }: { close: () => void }) {
   )
 }
 
+/* ---------- Installation (version web) ---------- */
+
+function Install({ close }: { close: () => void }) {
+  const [tab, setTab] = useState<'android' | 'ios'>(isIOS ? 'ios' : 'android')
+  const [copied, setCopied] = useState(false)
+  const done = () => {
+    try {
+      localStorage.setItem('siraj.installSeen', '1')
+    } catch {}
+    close()
+  }
+  return (
+    <div className="sheet">
+      <Top title="Installer As-Siraj" close={done} />
+      <Seg<'android' | 'ios'>
+        value={tab}
+        options={[
+          ['android', 'Android'],
+          ['ios', 'iPhone'],
+        ]}
+        onChange={setTab}
+      />
+      {tab === 'android' ? (
+        <div className="guide">
+          <p>L'application Android affiche un mot à chaque déverrouillage du téléphone.</p>
+          <a className="btn wide" href="./as-siraj.apk" download>
+            Télécharger l'application
+          </a>
+          <ol>
+            <li>Ouvrez le fichier téléchargé <b>as-siraj.apk</b>.</li>
+            <li>
+              Android demande d'autoriser l'installation depuis votre navigateur : touchez <b>Paramètres</b>, activez
+              l'autorisation, puis revenez et touchez <b>Installer</b>.
+            </li>
+            <li>
+              Ouvrez As-Siraj, allez dans <b>Réglages</b> et activez <b>Afficher un mot à chaque déverrouillage</b>, puis
+              donnez l'autorisation demandée.
+            </li>
+          </ol>
+          <p className="muted small">
+            Si les mots cessent d'apparaître après quelques jours, retirez As-Siraj de l'économie de batterie du téléphone
+            (Paramètres → Applications → As-Siraj → Batterie → Sans restriction).
+          </p>
+          {!isAndroidWeb && <p className="muted small">Ouvrez cette page depuis un téléphone Android pour l'installer.</p>}
+        </div>
+      ) : (
+        <div className="guide">
+          <p>
+            Sur iPhone, Apple ne permet pas d'afficher un mot au déverrouillage. Choisissez <b>une</b> des deux façons de faire
+            (la progression n'est pas partagée entre les deux).
+          </p>
+          <h3>Avec rappel automatique (conseillé)</h3>
+          <p>Un mot s'affiche chaque fois que vous ouvrez l'application de votre choix, par exemple WhatsApp.</p>
+          <button
+            className="btn wide"
+            onClick={() => navigator.clipboard.writeText(wordLink).then(() => setCopied(true), () => setCopied(false))}
+          >
+            {copied ? 'Lien copié ✓' : '1. Copier le lien du mot'}
+          </button>
+          <p className="muted small link-text">{wordLink}</p>
+          <ol start={2}>
+            <li>
+              Ouvrez l'app <b>Raccourcis</b>, onglet <b>Automatisation</b>, puis <b>+</b>.
+            </li>
+            <li>
+              Choisissez <b>App</b>, sélectionnez WhatsApp (ou une autre), cochez <b>Est ouverte</b> et <b>Exécuter immédiatement</b>
+              , puis <b>Suivant</b>.
+            </li>
+            <li>
+              Touchez <b>Nouvelle automatisation vierge</b>, ajoutez l'action <b>Ouvrir des URL</b>, collez le lien, puis{' '}
+              <b>Terminé</b>.
+            </li>
+          </ol>
+          <h3>Sans rappel</h3>
+          <ol>
+            <li>
+              Dans <b>Safari</b>, touchez le bouton <b>Partager</b> puis <b>Sur l'écran d'accueil</b>.
+            </li>
+            <li>Ouvrez As-Siraj depuis son icône : elle fonctionne aussi hors connexion.</li>
+          </ol>
+        </div>
+      )}
+      <button className="link center" onClick={done}>
+        Continuer dans le navigateur
+      </button>
+    </div>
+  )
+}
+
 /* ---------- Réglages ---------- */
 
 function Seg<T extends string | number>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
@@ -543,6 +650,16 @@ function Settings({ push }: { push: (o: Overlay) => void }) {
           />
         </div>
       </section>
+
+      {!isNative && (
+        <section className="panel">
+          <h3>Installation</h3>
+          <button className="line" onClick={() => push({ t: 'install' })}>
+            <span>Installer sur mon téléphone</span>
+            <span className="muted">›</span>
+          </button>
+        </section>
+      )}
 
       <section className="panel">
         <h3>Apprentissage</h3>

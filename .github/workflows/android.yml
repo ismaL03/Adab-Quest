@@ -3,7 +3,7 @@ name: APK Android
 # Compile l'application Android à chaque mise à jour et publie l'APK installable.
 on:
   push:
-    branches: [main, 'claude/**']
+    branches: ['claude/**']
   workflow_dispatch:
 
 permissions:
@@ -33,7 +33,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon -PversionCode=${{ github.run_number }}
+          ./gradlew assembleDebug --no-daemon -PversionCode=1
           cp app/build/outputs/apk/debug/app-debug.apk ../as-siraj.apk
       - uses: actions/upload-artifact@v4
         with:
