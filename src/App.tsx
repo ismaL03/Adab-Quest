@@ -537,9 +537,9 @@ function Install({ close }: { close: () => void }) {
               , puis <b>Suivant</b>.
             </li>
             <li>
-              Dans la barre <b>Recherche</b> en bas de l'écran, tapez <b>URL</b> et choisissez l'action{' '}
-              <b>Ouvrir des URL</b> (sur un iPhone plus ancien : <b>Nouvelle automatisation vierge</b> d'abord). Collez le
-              lien à la place du mot « URL », puis validez avec <b>✓</b> ou <b>Terminé</b>.
+              Touchez <b>Créer un raccourci</b> (ou <b>Nouvelle automatisation vierge</b>), cherchez l'action{' '}
+              <b>Ouvrir des URL</b> (icône Safari — pas l'action « URL » seule, qui n'ouvre rien), collez le lien dedans,
+              puis validez avec <b>✓</b> ou <b>Terminé</b>.
             </li>
           </ol>
           <h3>Sans rappel</h3>
