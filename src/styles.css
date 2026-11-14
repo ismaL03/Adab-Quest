@@ -154,3 +154,5 @@ textarea { margin-top: 12px; font-size: 12px; }
 .guide li { margin-bottom: 10px; }
 a.btn { text-decoration: none; }
 .link-text { word-break: break-all; margin: 8px 0 0; }
+.sticky { position: sticky; bottom: 0; padding: 12px 0 calc(env(safe-area-inset-bottom) + 4px); background: linear-gradient(transparent, var(--bg) 30%); }
+.su-head + .cta { margin-top: 8px; }

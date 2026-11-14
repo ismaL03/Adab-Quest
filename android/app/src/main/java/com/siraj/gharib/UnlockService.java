@@ -1,5 +1,6 @@
 package com.siraj.gharib;
 
+import android.app.AlarmManager;
 import android.app.KeyguardManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -11,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.SystemClock;
@@ -21,7 +23,7 @@ import androidx.core.content.ContextCompat;
 
 /**
  * Service permanent : Android ne prévient du déverrouillage que les applications en cours d'exécution.
- * À chaque déverrouillage, il ramène l'application au premier plan avec un mot à apprendre ou à réviser.
+ * À chaque déverrouillage, il affiche par-dessus l'écran un mot à apprendre ou à réviser.
  */
 public class UnlockService extends Service {
 
@@ -91,6 +93,11 @@ public class UnlockService extends Service {
         // 2 s d'écart minimum : ACTION_SCREEN_ON et ACTION_USER_PRESENT peuvent arriver coup sur coup.
         if (lastShown != 0 && now - lastShown < Math.max(gap, 2_000L)) return;
         lastShown = now;
+        // Pas de mot pendant un appel.
+        AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (audio != null && audio.getMode() != AudioManager.MODE_NORMAL) return;
+        if (OverlayCard.show(this)) return;
+        // File de mots épuisée (application jamais rouverte) : on ouvre l'application elle-même.
         UnlockPrefs.setPending(this, true);
         Intent open = new Intent(this, MainActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION);
@@ -98,6 +105,23 @@ public class UnlockService extends Service {
             startActivity(open);
         } catch (RuntimeException e) {
             UnlockPrefs.setPending(this, false);
+        }
+    }
+
+    /** Filet de sécurité : si le téléphone arrête le service, une alarme le relance dans la demi-heure. */
+    static void scheduleWatchdog(Context context, boolean on) {
+        AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarms == null) return;
+        PendingIntent wake = PendingIntent.getBroadcast(
+            context,
+            1,
+            new Intent(context, BootReceiver.class),
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+        alarms.cancel(wake);
+        if (on) {
+            long every = AlarmManager.INTERVAL_HALF_HOUR;
+            alarms.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + every, every, wake);
         }
     }
 

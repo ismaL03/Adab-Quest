@@ -33,6 +33,7 @@ export function setState(patch: Partial<State>) {
   subs.forEach((f) => f())
 }
 export const getState = () => state
+export const subscribe = (f: () => void) => (subs.add(f), () => void subs.delete(f))
 export const useStore = () =>
   useSyncExternalStore(
     (f) => (subs.add(f), () => subs.delete(f)),
@@ -105,6 +106,43 @@ export function pickUnlock(mode: UnlockMode = state.unlock.mode): Pick | null {
   if (mode === 'new') return asNew || asReview || consolidation()
   if (mode === 'review') return asReview || consolidation() || asNew
   return (Math.random() < 0.5 ? asReview || asNew : asNew || asReview) || consolidation()
+}
+
+/** Réponses données sur les cartes de déverrouillage Android, à reporter dans la progression. */
+export function applyAnswers(answers: { id: number; st: Status; at: number }[]) {
+  if (!answers.length) return
+  const st = { ...state.st }
+  for (const a of answers) if (WORDS[a.id] && (a.st === 1 || a.st === 2)) st[a.id] = [a.st, a.at || Date.now()]
+  setState({ st })
+}
+
+/** Les prochains mots à proposer au déverrouillage, dans l'ordre, selon le mode choisi. */
+export function unlockQueue(n = 80): Pick[] {
+  const fresh: Pick[] = []
+  for (const w of WORDS) {
+    if (fresh.length >= n) break
+    if (!state.st[w.id] && inScope(w)) fresh.push({ word: w, kind: 'new' })
+  }
+  const review: Pick[] = reviewQueue().slice(0, n).map((word) => ({ word, kind: 'review' }))
+  const mode = state.unlock.mode
+  let out: Pick[] = []
+  if (mode === 'new') out = [...fresh, ...review]
+  else if (mode === 'review') out = [...review]
+  else {
+    let i = 0
+    let j = 0
+    while (out.length < n && (i < fresh.length || j < review.length)) {
+      const takeReview = j < review.length && (i >= fresh.length || Math.random() < 0.5)
+      out.push(takeReview ? review[j++] : fresh[i++])
+    }
+  }
+  // Plus rien à réviser : on consolide les mots maîtrisés, puis on reprend les nouveaux.
+  if (out.length < n && mode !== 'new') {
+    const seen = new Set(out.map((p) => p.word.id))
+    for (const word of reviewQueue(true)) if (out.length < n && !seen.has(word.id)) out.push({ word, kind: 'review' })
+    if (mode === 'review') out.push(...fresh)
+  }
+  return out.slice(0, n)
 }
 
 export function exportData() {

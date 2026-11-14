@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { App as CapApp } from '@capacitor/app'
 import { SURAHS, WORDS, arNum, search, type Word } from './data'
 import {
+  applyAnswers,
   counts,
   exportData,
   getState,
@@ -14,6 +15,8 @@ import {
   scopeLabel,
   setState,
   statusOf,
+  subscribe,
+  unlockQueue,
   useStore,
   type Pick,
   type Status,
@@ -25,6 +28,7 @@ import { Unlock, isAndroid, isNative } from './native'
 const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
 const isAndroidWeb = !isNative && /Android/.test(navigator.userAgent)
+const wordOnly = !isNative && new URLSearchParams(location.search).has('mot')
 const wordLink = location.origin + location.pathname + '?mot=1'
 
 type Overlay =
@@ -42,7 +46,7 @@ export default function App() {
   const [stack, setStack] = useState<Overlay[]>(() => {
     if (isNative) return []
     // Lien « ?mot=1 » (automatisation iPhone) : on ouvre directement sur un mot.
-    if (new URLSearchParams(location.search).has('mot')) {
+    if (wordOnly) {
       const pick = pickUnlock()
       return pick ? [{ t: 'unlock', pick }] : []
     }
@@ -72,7 +76,37 @@ export default function App() {
     ]
     const { enabled, interval } = getState().unlock
     Unlock.setEnabled({ enabled, interval }).catch(() => {})
-    return () => handles.forEach((h) => h.then((x) => x.remove()))
+
+    // Les cartes de déverrouillage sont affichées par le service Android : on lui prépare la file
+    // des prochains mots, et on récupère les réponses données pendant que l'application était fermée.
+    let timer = 0
+    const sendQueue = () => {
+      const items = unlockQueue().map(({ word: w, kind }) => ({
+        id: w.id,
+        kind,
+        w: w.w,
+        m: w.m,
+        ar: SURAHS[w.s].ar,
+        fr: SURAHS[w.s].fr + (w.a ? ` · verset ${w.a}` : ''),
+      }))
+      Unlock.setQueue({ items }).catch(() => {})
+    }
+    const sync = () =>
+      Unlock.takeAnswers()
+        .then((r) => applyAnswers(r.answers))
+        .catch(() => {})
+        .then(sendQueue)
+    sync()
+    handles.push(CapApp.addListener('appStateChange', (st) => void (st.isActive && sync())))
+    const unsub = subscribe(() => {
+      clearTimeout(timer)
+      timer = window.setTimeout(sendQueue, 400)
+    })
+    return () => {
+      unsub()
+      clearTimeout(timer)
+      handles.forEach((h) => h.then((x) => x.remove()))
+    }
   }, [])
 
   return (
@@ -99,8 +133,19 @@ export default function App() {
       {top && (
         <div className="overlay" key={stack.length + top.t}>
           {top.t === 'session' && <Session mode={top.mode} mastered={top.mastered} close={pop} />}
-          {top.t === 'surah' && <SurahView n={top.n} close={pop} />}
-          {top.t === 'scope' && <ScopePicker close={pop} />}
+          {top.t === 'surah' && (
+            <SurahView
+              n={top.n}
+              close={pop}
+              learn={(n) => {
+                setState({ scope: [n] })
+                push({ t: 'session', mode: 'new' })
+              }}
+            />
+          )}
+          {top.t === 'scope' && (
+            <ScopePicker close={pop} start={() => setStack((st) => [...st.slice(0, -1), { t: 'session', mode: 'new' }])} />
+          )}
           {top.t === 'install' && <Install close={pop} />}
           {top.t === 'unlock' && <UnlockCard pick={top.pick} close={pop} />}
         </div>
@@ -284,10 +329,25 @@ function Top({ title, close, right }: { title: string; close: () => void; right?
 /* ---------- Mot au déverrouillage ---------- */
 
 function UnlockCard({ pick, close }: { pick: Pick; close: () => void }) {
+  const [saved, setSaved] = useState(false)
   const leave = () => {
+    // Lien « un seul mot » (iPhone) : on s'arrête là, sans afficher toute l'application.
+    if (wordOnly) return setSaved(true)
     close()
     Unlock.dismiss().catch(() => {})
   }
+  if (saved)
+    return (
+      <div className="sheet">
+        <div className="done">
+          <div className="done-ar">✓</div>
+          <p>C'est noté. Vous pouvez revenir à votre application.</p>
+          <button className="link" onClick={close}>
+            Ouvrir As-Siraj
+          </button>
+        </div>
+      </div>
+    )
   return (
     <div className="sheet unlock">
       <div className="top">
@@ -304,9 +364,11 @@ function UnlockCard({ pick, close }: { pick: Pick; close: () => void }) {
           leave()
         }}
       />
-      <button className="link center" onClick={close}>
-        Ouvrir l'application
-      </button>
+      {!wordOnly && (
+        <button className="link center" onClick={close}>
+          Ouvrir l'application
+        </button>
+      )}
     </div>
   )
 }
@@ -398,7 +460,7 @@ function SurahList({ push }: { push: (o: Overlay) => void }) {
   )
 }
 
-function SurahView({ n, close }: { n: number; close: () => void }) {
+function SurahView({ n, close, learn }: { n: number; close: () => void; learn: (n: number) => void }) {
   const s = useStore()
   const su = SURAHS[n]
   const [hide, setHide] = useState(false)
@@ -407,6 +469,14 @@ function SurahView({ n, close }: { n: number; close: () => void }) {
     <div className="sheet">
       <Top title={su.fr} close={close} right={`${c.mastered} / ${c.total}`} />
       <div className="ar su-head">سُورَةُ {su.ar}</div>
+      {n > 0 && c.fresh > 0 && (
+        <button className="cta primary" onClick={() => learn(n)}>
+          <strong>Apprendre cette sourate</strong>
+          <small>
+            {c.fresh} nouveau{c.fresh > 1 ? 'x' : ''} mot{c.fresh > 1 ? 's' : ''}
+          </small>
+        </button>
+      )}
       <div className="tools">
         <button className={'pill' + (hide ? ' on' : '')} onClick={() => setHide(!hide)}>
           {hide ? 'Afficher les sens' : 'Masquer les sens'}
@@ -430,7 +500,7 @@ function SurahView({ n, close }: { n: number; close: () => void }) {
 
 /* ---------- Choix des sourates ---------- */
 
-function ScopePicker({ close }: { close: () => void }) {
+function ScopePicker({ close, start }: { close: () => void; start: () => void }) {
   const s = useStore()
   const sel = new Set(s.scope ?? [])
   const set = (list: number[]) => setState({ scope: list.length ? [...list].sort((a, b) => a - b) : null })
@@ -464,6 +534,11 @@ function ScopePicker({ close }: { close: () => void }) {
           </li>
         ))}
       </ul>
+      <div className="sticky">
+        <button className="btn wide" disabled={!nextNew()} onClick={start}>
+          {nextNew() ? `Apprendre · ${scopeLabel(s)}` : 'Tous ces mots ont déjà été vus'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -574,7 +649,7 @@ function Seg<T extends string | number>({ value, options, onChange }: { value: T
 
 function Settings({ push }: { push: (o: Overlay) => void }) {
   const s = useStore()
-  const [perm, setPerm] = useState<{ overlay: boolean; notifications: boolean } | null>(null)
+  const [perm, setPerm] = useState<{ overlay: boolean; notifications: boolean; battery: boolean } | null>(null)
   const [backup, setBackup] = useState<'idle' | 'restore'>('idle')
   const [text, setText] = useState('')
   const [msg, setMsg] = useState('')
@@ -615,6 +690,17 @@ function Settings({ push }: { push: (o: Overlay) => void }) {
                 </p>
                 <button className="btn wide" onClick={() => Unlock.requestOverlay()}>
                   Donner l'autorisation
+                </button>
+              </div>
+            )}
+            {s.unlock.enabled && perm?.overlay && !perm.battery && (
+              <div className="warn">
+                <p>
+                  Pour que les mots continuent d'apparaître dans la durée, autorisez As-Siraj à rester actif en arrière-plan
+                  (sinon le téléphone peut l'arrêter pour économiser la batterie).
+                </p>
+                <button className="btn wide" onClick={() => Unlock.requestBattery()}>
+                  Autoriser
                 </button>
               </div>
             )}
